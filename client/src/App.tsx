@@ -1,98 +1,58 @@
-import { useState, useEffect } from 'react'
-import './App.css'
-import { supabase } from './supabaseClient'
-import type { Database } from './types/supabase'
-import { Session } from '@supabase/supabase-js'
-import AuthComponent from './components/Auth'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import AuthComponent from './components/Auth';
+import ProtectedRoute from './components/ProtectedRoute';
 
-function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [personalCount, setPersonalCount] = useState<number>(0)
+// Import your other components here
+// import Dashboard from './components/Dashboard';
+// import TicketList from './components/TicketList';
+// etc...
 
-  useEffect(() => {
-    // Get session on initial load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
-
-    // Subscribe to auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // Load the personal counter from the database once user is signed in
-  useEffect(() => {
-    async function fetchPersonalCount() {
-      if (session?.user) {
-        const { data, error } = await supabase
-          .from('personal_counts')
-          .select('value')
-          .eq('user_id', session.user.id)
-          .single()
-
-        if (data?.value !== undefined) {
-          setPersonalCount(data.value)
-        } else if (!data) {
-          // If there's no row yet, create it
-          const { error: insertError } = await supabase
-            .from('personal_counts')
-            .insert([{ user_id: session.user.id, value: 0 }])
-
-          if (!insertError) {
-            setPersonalCount(0)
-          }
-        }
-        if (error) console.error('Error fetching personal count:', error.message)
-      }
-    }
-
-    fetchPersonalCount()
-  }, [session])
-
-  // Update the personal counter in the database
-  async function updatePersonalCount(newValue: number) {
-    if (!session?.user) return
-
-    setPersonalCount(newValue)
-    const { error } = await supabase
-      .from('personal_counts')
-      .upsert({ user_id: session.user.id, value: newValue })
-
-    if (error) {
-      console.error('Error updating personal count:', error.message)
-    }
-  }
-
+export default function App() {
   return (
-    <div className="container">
-      <AuthComponent />
+    <Router>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/auth" element={<AuthComponent />} />
+        
+        {/* Protected customer routes */}
+        <Route
+          path="/customer/tickets"
+          element={
+            <ProtectedRoute allowedRoles={['customer', 'admin']}>
+              {/* <CustomerTickets /> */}
+              <div>Customer Tickets Page (Coming Soon)</div>
+            </ProtectedRoute>
+          }
+        />
 
-      {session?.user ? (
-        <div style={{ marginTop: '2rem' }}>
-          <h2>Personal Counter</h2>
-          <div>
-            <button onClick={() => updatePersonalCount(personalCount - 1)}>
-              -
-            </button>
-            <span style={{ margin: '0 1rem' }}>
-              {personalCount}
-            </span>
-            <button onClick={() => updatePersonalCount(personalCount + 1)}>
-              +
-            </button>
-          </div>
-          <p>Logged in as: {session.user.email}</p>
-        </div>
-      ) : (
-        <p>Please sign in to see your personal counter.</p>
-      )}
-    </div>
-  )
+        {/* Protected employee routes */}
+        <Route
+          path="/employee/tickets"
+          element={
+            <ProtectedRoute allowedRoles={['employee', 'admin']}>
+              {/* <EmployeeTickets /> */}
+              <div>Employee Tickets Page (Coming Soon)</div>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected admin routes */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              {/* <AdminDashboard /> */}
+              <div>Admin Dashboard (Coming Soon)</div>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Unauthorized access page */}
+        <Route path="/unauthorized" element={<div>Unauthorized Access</div>} />
+
+        {/* Redirect root to appropriate dashboard based on role */}
+        <Route path="/" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    </Router>
+  );
 }
-
-export default App
