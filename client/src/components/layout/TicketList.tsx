@@ -4,6 +4,7 @@ import { LayoutGrid, List } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { supabase } from "../../supabaseClient";
 import type { Database } from "../../types/supabase";
+import { CreateTicketDialog } from "./CreateTicketDialog";
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customer: {
@@ -156,6 +157,7 @@ export function TicketList() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Tickets</h2>
         <div className="flex items-center gap-2">
+          <CreateTicketDialog />
           <Button
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="icon"
