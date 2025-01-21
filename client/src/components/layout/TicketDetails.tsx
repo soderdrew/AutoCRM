@@ -30,6 +30,13 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   } | null;
 };
 
+type Comment = Database['public']['Tables']['ticket_comments']['Row'] & {
+  user: {
+    first_name: string;
+    last_name: string;
+  } | null;
+};
+
 interface TicketDetailsProps {
   ticketId: string | null;
   isOpen: boolean;
@@ -61,11 +68,13 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
   const [userRole, setUserRole] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const { toast } = useToast();
+  const [comments, setComments] = useState<Comment[]>([]);
 
   useEffect(() => {
     if (ticketId && isOpen) {
       fetchTicketDetails();
       fetchUserRole();
+      fetchComments();
     }
   }, [ticketId, isOpen]);
 
@@ -129,6 +138,59 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
       setError(err instanceof Error ? err.message : 'Failed to load ticket details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchComments = async () => {
+    if (!ticketId) return;
+
+    try {
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('ticket_comments')
+        .select(`
+          id,
+          ticket_id,
+          user_id,
+          content,
+          is_internal,
+          created_at,
+          updated_at
+        `)
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
+
+      if (commentsError) throw commentsError;
+
+      // Fetch user details for each comment
+      const commentsWithUsers = await Promise.all((commentsData || []).map(async (comment) => {
+        const { data: userData, error: userError } = await supabase
+          .from('user_roles')
+          .select('first_name, last_name')
+          .eq('user_id', comment.user_id)
+          .single();
+
+        if (userError) {
+          console.error('Error fetching user details:', userError);
+          return {
+            ...comment,
+            user: null
+          };
+        }
+
+        return {
+          ...comment,
+          user: userData
+        };
+      }));
+
+      setComments(commentsWithUsers);
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load ticket comments",
+        variant: "destructive",
+      });
     }
   };
 
@@ -383,6 +445,46 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
                     <p>{format(new Date(ticket.closed_at), 'PPpp')}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Comments Section */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Comments</h3>
+                <div className="space-y-4">
+                  {comments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No comments yet.</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div 
+                        key={comment.id} 
+                        className={`p-4 rounded-lg ${
+                          comment.is_internal 
+                            ? 'bg-yellow-50 border border-yellow-200' 
+                            : 'bg-gray-50 border border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {comment.user 
+                                ? `${comment.user.first_name} ${comment.user.last_name}`
+                                : 'Unknown User'}
+                            </span>
+                            {comment.is_internal && (
+                              <Badge variant="secondary" className="text-xs">
+                                Internal Note
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(comment.created_at), 'PPpp')}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </>
