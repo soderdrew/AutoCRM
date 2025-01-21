@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader } from "../ui/card";
+import { TicketDetails } from "./TicketDetails";
 
 interface TicketCardProps {
   ticket: {
@@ -28,28 +30,41 @@ const priorityColors = {
 };
 
 export function TicketCard({ ticket }: TicketCardProps) {
+  const [showDetails, setShowDetails] = useState(false);
+
   return (
-    <Card className="hover:border-primary/20 transition-colors">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex gap-2">
-            <Badge variant="secondary" className={statusColors[ticket.status]}>
-              {ticket.status.replace("_", " ")}
-            </Badge>
-            <Badge variant="secondary" className={priorityColors[ticket.priority]}>
-              {ticket.priority}
-            </Badge>
+    <>
+      <Card 
+        className="hover:border-primary/20 transition-colors cursor-pointer"
+        onClick={() => setShowDetails(true)}
+      >
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex gap-2">
+              <Badge variant="secondary" className={statusColors[ticket.status]}>
+                {ticket.status.replace("_", " ")}
+              </Badge>
+              <Badge variant="secondary" className={priorityColors[ticket.priority]}>
+                {ticket.priority}
+              </Badge>
+            </div>
+            <div className="text-xs text-gray-400">#{ticket.id.slice(-8)}</div>
           </div>
-          <div className="text-xs text-gray-400">#{ticket.id.slice(-8)}</div>
-        </div>
-        <h3 className="font-semibold text-lg leading-tight">{ticket.title}</h3>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="truncate">{ticket.customer}</div>
-          <div className="text-xs">{ticket.createdAt}</div>
-        </div>
-      </CardContent>
-    </Card>
+          <h3 className="font-semibold text-lg leading-tight">{ticket.title}</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="truncate">{ticket.customer}</div>
+            <div className="text-xs">{ticket.createdAt}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <TicketDetails
+        ticketId={showDetails ? ticket.id : null}
+        isOpen={showDetails}
+        onOpenChange={setShowDetails}
+      />
+    </>
   );
 }
