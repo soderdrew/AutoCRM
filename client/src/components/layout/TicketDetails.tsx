@@ -34,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { TicketAssignment } from "./TicketAssignment";
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customer: {
@@ -362,26 +363,17 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
   };
 
   const handleDeleteComment = async () => {
-    console.log('Delete comment function called', { commentToDelete });
-    if (!commentToDelete) {
-      console.log('No comment to delete');
-      return;
-    }
+    if (!commentToDelete) return;
 
     try {
-      console.log('Attempting to delete comment:', commentToDelete.id);
       const { error: deleteError } = await supabase
         .from('ticket_comments')
         .delete()
         .eq('id', commentToDelete.id)
         .eq('user_id', currentUserId); // Extra safety check
 
-      if (deleteError) {
-        console.error('Error deleting comment:', deleteError);
-        throw deleteError;
-      }
+      if (deleteError) throw deleteError;
 
-      console.log('Comment deleted successfully');
       toast({
         title: "Comment Deleted",
         description: "Your comment has been successfully deleted.",
@@ -499,6 +491,8 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
                       </Badge>
                     </div>
                   )}
+
+                  <TicketAssignment ticketId={ticket.id} />
                 </div>
 
                 {/* Customer Information */}
