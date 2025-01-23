@@ -22,7 +22,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <div className="flex h-16 items-center border-b px-6">
-        <span className="text-lg font-semibold">Support CRM</span>
+        <span className="text-lg font-semibold text-blue-600">ServeLocal</span>
         <SidebarTrigger className="ml-auto lg:hidden">
           <Menu className="h-6 w-6" />
         </SidebarTrigger>

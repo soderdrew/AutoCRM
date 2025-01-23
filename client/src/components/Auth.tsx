@@ -5,6 +5,15 @@ import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Label } from "../components/ui/label"
+import { Input } from "../components/ui/input"
+
+interface UserFormData {
+  firstName?: string;
+  lastName?: string;
+  orgName?: string;
+  email: string;
+  password: string;
+}
 
 const customTheme = {
   default: {
@@ -53,6 +62,11 @@ export default function AuthComponent() {
   const [error, setError] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [selectedRole, setSelectedRole] = useState<'volunteer' | 'organization' | null>(null)
+  const [formData, setFormData] = useState<UserFormData>({
+    email: '',
+    password: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const mode = searchParams.get('mode') || 'signin'
@@ -64,6 +78,61 @@ export default function AuthComponent() {
       setSelectedRole(type)
     }
   }, [type])
+
+  // Handle sign up submission
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Validate form
+    if (selectedRole === 'volunteer' && (!formData.firstName || !formData.lastName)) {
+      setError('Please enter both first and last name')
+      return
+    }
+    if (selectedRole === 'organization' && !formData.orgName) {
+      setError('Please enter your organization name')
+      return
+    }
+    if (!formData.email || !formData.password) {
+      setError('Please enter both email and password')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      setError(null)
+
+      // Create the user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (authError) throw authError
+
+      if (authData.user) {
+        // Insert user role and additional info
+          const { error: insertError } = await supabase
+            .from('user_roles')
+            .insert({
+            user_id: authData.user.id,
+              role: selectedRole === 'volunteer' ? 'employee' : 'customer',
+              first_name: formData.firstName || (selectedRole === 'organization' ? formData.orgName : null),
+              last_name: formData.lastName || null,
+              is_active: true
+            })
+
+          if (insertError) throw insertError
+      }
+
+      // Show success message
+      setError('Please check your email to confirm your account')
+        } catch (err) {
+      console.error('Error during sign up:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred during sign up')
+    } finally {
+      setIsSubmitting(false)
+        }
+      }
 
   useEffect(() => {
     // Get initial session
@@ -272,94 +341,176 @@ export default function AuthComponent() {
               </p>
             </div>
 
-            {/* Role Selector for Sign Up */}
-            {mode === 'signup' && (
-              <div className="mb-8">
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">I want to join as:</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    className={`p-4 text-left border rounded-lg transition-colors ${
-                      selectedRole === 'volunteer'
-                        ? 'border-blue-600 bg-blue-50 text-blue-600'
-                        : 'border-gray-200 hover:border-blue-200'
-                    }`}
-                    onClick={() => {
-                      setSelectedRole('volunteer')
-                      setSearchParams({ mode: 'signup', type: 'volunteer' })
-                    }}
-                  >
-                    <div className="font-semibold mb-1">Volunteer</div>
-                    <div className="text-sm text-gray-600">
-                      Find and participate in community service opportunities
-                    </div>
-                  </button>
-                  <button
-                    className={`p-4 text-left border rounded-lg transition-colors ${
-                      selectedRole === 'organization'
-                        ? 'border-blue-600 bg-blue-50 text-blue-600'
-                        : 'border-gray-200 hover:border-blue-200'
-                    }`}
-                    onClick={() => {
-                      setSelectedRole('organization')
-                      setSearchParams({ mode: 'signup', type: 'organization' })
-                    }}
-                  >
-                    <div className="font-semibold mb-1">Organization</div>
-                    <div className="text-sm text-gray-600">
-                      Post opportunities and connect with volunteers
-                    </div>
-                  </button>
+            {mode === 'signup' ? (
+              <form onSubmit={handleSignUp} className="space-y-6">
+                <div className="mb-6">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">I want to join as:</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      className={`p-4 text-left border rounded-lg transition-colors ${
+                        selectedRole === 'volunteer'
+                          ? 'border-blue-600 bg-blue-50 text-blue-600'
+                          : 'border-gray-200 hover:border-blue-200'
+                      }`}
+                      onClick={() => {
+                        setSelectedRole('volunteer')
+                        setSearchParams({ mode: 'signup', type: 'volunteer' })
+                        setFormData(prev => ({
+                          ...prev,
+                          orgName: undefined,
+                        }))
+                      }}
+                    >
+                      <div className="font-semibold mb-1">Volunteer</div>
+                      <div className="text-sm text-gray-600">
+                        Find and participate in community service opportunities
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className={`p-4 text-left border rounded-lg transition-colors ${
+                        selectedRole === 'organization'
+                          ? 'border-blue-600 bg-blue-50 text-blue-600'
+                          : 'border-gray-200 hover:border-blue-200'
+                      }`}
+                      onClick={() => {
+                        setSelectedRole('organization')
+                        setSearchParams({ mode: 'signup', type: 'organization' })
+                        setFormData(prev => ({
+                          ...prev,
+                          firstName: undefined,
+                          lastName: undefined,
+                        }))
+                      }}
+                    >
+                      <div className="font-semibold mb-1">Organization</div>
+                      <div className="text-sm text-gray-600">
+                        Post opportunities and connect with volunteers
+                      </div>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Show auth form only if signing in or role is selected */}
-            {(mode === 'signin' || selectedRole) && (
-              <Auth
-                supabaseClient={supabase}
-                appearance={{ 
-                  theme: ThemeSupa,
-                  variables: {
-                    default: {
-                      colors: {
-                        brand: '#2563eb',
-                        brandAccent: '#1d4ed8',
+                {selectedRole === 'volunteer' && (
+                  <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input
+                            id="firstName"
+                            value={formData.firstName || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                            placeholder="Enter your first name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            value={formData.lastName || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                            placeholder="Enter your last name"
+                          />
+                        </div>
+                  </div>
+                )}
+
+                {selectedRole === 'organization' && (
+                      <div>
+                        <Label htmlFor="orgName">Organization Name</Label>
+                        <Input
+                          id="orgName"
+                          value={formData.orgName || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, orgName: e.target.value }))}
+                          placeholder="Enter your organization name"
+                        />
+                      </div>
+                    )}
+
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Create Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Create a secure password"
+                  />
+                </div>
+
+                    {error && (
+                      <div className="text-sm text-red-600 mt-2">
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                  type="submit"
+                  disabled={isSubmitting || !selectedRole}
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                  {isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                    </button>
+
+                <div className="text-center text-sm text-gray-600">
+                  <a href="/auth?mode=signin" className="hover:text-blue-600">
+                    Already have an account? Sign in
+                  </a>
+                  </div>
+              </form>
+            ) : (
+              <>
+                <Auth
+                  supabaseClient={supabase}
+                  appearance={{ 
+                    theme: ThemeSupa,
+                    variables: {
+                      default: {
+                        colors: {
+                          brand: '#2563eb',
+                          brandAccent: '#1d4ed8',
+                        },
                       },
                     },
-                  },
-                }}
-                theme="default"
-                providers={[]}
-                redirectTo={window.location.origin + '/auth/callback'}
-                magicLink={false}
-                showLinks={mode === 'signup'}
-                view={mode === 'signup' ? 'sign_up' : 'sign_in'}
-                localization={{
-                  variables: {
-                    sign_up: {
-                      email_label: 'Email',
-                      password_label: 'Create Password',
-                      email_input_placeholder: 'Enter your email',
-                      password_input_placeholder: 'Create a secure password',
-                      button_label: 'Sign Up',
-                      loading_button_label: 'Creating Account...',
-                      social_provider_text: 'Sign in with {{provider}}',
-                      link_text: 'Already have an account? Sign in',
-                      confirmation_text: 'Check your email for the confirmation link',
+                  }}
+                  theme="default"
+                  providers={[]}
+                  redirectTo={window.location.origin + '/auth/callback'}
+                  magicLink={false}
+                  showLinks={false}
+                  view="sign_in"
+                  localization={{
+                    variables: {
+                      sign_in: {
+                        email_label: 'Email',
+                        password_label: 'Password',
+                        email_input_placeholder: 'Enter your email',
+                        password_input_placeholder: 'Enter your password',
+                        button_label: 'Sign In',
+                        loading_button_label: 'Signing in...',
+                        social_provider_text: 'Sign in with {{provider}}',
+                        link_text: '',
+                      },
                     },
-                    sign_in: {
-                      email_label: 'Email',
-                      password_label: 'Password',
-                      email_input_placeholder: 'Enter your email',
-                      password_input_placeholder: 'Enter your password',
-                      button_label: 'Sign In',
-                      loading_button_label: 'Signing in...',
-                      social_provider_text: 'Sign in with {{provider}}',
-                      link_text: '',
-                    },
-                  },
-                }}
-              />
+                  }}
+                />
+                <div className="text-center text-sm text-gray-600 mt-6">
+                  <a href="/auth?mode=signup" className="hover:text-blue-600">
+                    Don't have an account? Sign up
+                  </a>
+                </div>
+              </>
             )}
           </div>
         </div>
