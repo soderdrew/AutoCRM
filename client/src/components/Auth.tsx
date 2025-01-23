@@ -181,8 +181,8 @@ export default function AuthComponent() {
       // Redirect based on role
       const roleRoutes = {
         admin: '/admin/dashboard',
-        employee: '/volunteer/opportunities',
-        customer: '/organization/opportunities'
+        employee: '/volunteer/dashboard',
+        customer: '/organization/dashboard'
       }
 
       const route = roleRoutes[data.role as keyof typeof roleRoutes]

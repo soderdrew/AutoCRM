@@ -1,4 +1,4 @@
-import { Home, Inbox, Users, Settings, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,14 +11,17 @@ import {
   SidebarTrigger,
 } from "../ui/sidebar";
 
-const menuItems = [
-  { icon: Home, label: "Dashboard", href: "#" },
-  { icon: Inbox, label: "Tickets", href: "#" },
-  { icon: Users, label: "Team", href: "#" },
-  { icon: Settings, label: "Settings", href: "#" },
-];
+interface MenuItem {
+  icon: any;
+  label: string;
+  href: string;
+}
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  menuItems: MenuItem[];
+}
+
+export function AppSidebar({ menuItems }: AppSidebarProps) {
   return (
     <Sidebar>
       <div className="flex h-16 items-center border-b px-6">
