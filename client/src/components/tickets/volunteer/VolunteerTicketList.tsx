@@ -20,56 +20,24 @@ export function VolunteerTicketList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Check auth state
     const checkAuth = async () => {
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      if (authError) {
-        console.error('Auth error:', authError);
-        setError('Authentication error. Please try logging in again.');
-        return false;
-      }
-      if (!session) {
-        console.error('No active session');
-        setError('Please log in to view opportunities.');
-        return false;
-      }
-      console.log('Authenticated as:', session.user.email);
-      return true;
-    };
-
-    const initializeTickets = async () => {
-      const isAuthenticated = await checkAuth();
-      if (isAuthenticated) {
-        fetchTickets();
-      } else {
-        setLoading(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setCurrentUserId(session.user.id);
       }
     };
-
-    initializeTickets();
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('tickets-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets'
-        },
-        () => {
-          fetchTickets();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchTickets();
+    }
+  }, [currentUserId]);
 
   const fetchTickets = async () => {
     try {
@@ -103,20 +71,33 @@ export function VolunteerTicketList() {
         throw ticketsError;
       }
 
+      // Fetch current user's assignments
+      if (currentUserId) {
+        const { data: assignmentData, error: assignmentError } = await supabase
+          .from('ticket_assignments')
+          .select('ticket_id')
+          .eq('agent_id', currentUserId)
+          .eq('active', true);
+
+        if (assignmentError) {
+          console.error('Error fetching assignments:', assignmentError);
+        } else {
+          setAssignments(new Set(assignmentData.map(a => a.ticket_id)));
+        }
+      }
+
       // Then fetch user roles for all customers
       const customerIds = ticketsData?.map(t => t.customer_id) || [];
       const { data: userRolesData, error: userRolesError } = await supabase
         .from('user_roles')
         .select('user_id, first_name, last_name, company')
         .in('user_id', customerIds)
-        .eq('role', 'customer');  // Only get customer role
+        .eq('role', 'customer');
 
       if (userRolesError) {
         console.error('Error fetching user roles:', userRolesError);
         throw userRolesError;
       }
-
-      console.log('User roles data:', userRolesData);
 
       // Create a map of user_id to user role data
       const userRolesMap = new Map(
@@ -125,7 +106,7 @@ export function VolunteerTicketList() {
           {
             first_name: role.first_name || '',
             last_name: role.last_name || '',
-            company: role.company || role.first_name || null  // Fall back to first_name for company
+            company: role.company || role.first_name || null
           }
         ]) || []
       );
@@ -136,7 +117,6 @@ export function VolunteerTicketList() {
         customer: userRolesMap.get(ticket.customer_id) || null
       }));
 
-      console.log('Transformed opportunities:', transformedTickets);
       setTickets(transformedTickets);
     } catch (err) {
       console.error('Error fetching opportunities:', err);
@@ -193,12 +173,13 @@ export function VolunteerTicketList() {
               id: ticket.id,
               title: ticket.title,
               customer: ticket.customer ? 
-                `${ticket.customer.first_name} ${ticket.customer.last_name}${ticket.customer.company ? ` · ${ticket.customer.company}` : ''}` : 
+                ticket.customer.company || ticket.customer.first_name : 
                 'Unknown Organization',
               status: ticket.status,
               priority: ticket.priority,
               createdAt: new Date(ticket.created_at).toLocaleString()
             }}
+            isAssigned={assignments.has(ticket.id)}
           />
         ))}
         {tickets.length === 0 && (

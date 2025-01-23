@@ -206,7 +206,8 @@ export function VolunteerDashboardList() {
         <TabsTrigger value="completed">Completed Opportunities</TabsTrigger>
       </TabsList>
       <TabsContent value="active" className="mt-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Active Opportunities</h3>
           {activeTickets.map((ticket) => (
             <VolunteerTicketCard
               key={ticket.id}
@@ -214,29 +215,24 @@ export function VolunteerDashboardList() {
                 id: ticket.id,
                 title: ticket.title,
                 customer: ticket.customer ? 
-                  `${ticket.customer.first_name} ${ticket.customer.last_name}${ticket.customer.company ? ` · ${ticket.customer.company}` : ''}` : 
+                  ticket.customer.company || ticket.customer.first_name : 
                   'Unknown Organization',
                 status: ticket.status,
                 priority: ticket.priority,
                 createdAt: new Date(ticket.created_at).toLocaleString()
               }}
+              isAssigned={true}
               onAssignmentChange={fetchTickets}
             />
           ))}
           {activeTickets.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-gray-50 rounded-lg space-y-4">
-              <p className="text-gray-600">You haven't signed up for any opportunities yet</p>
-              <Link to="/volunteer/opportunities">
-                <Button variant="default">
-                  Find Opportunities
-                </Button>
-              </Link>
-            </div>
+            <p className="text-gray-500 text-center py-4">No active opportunities</p>
           )}
         </div>
       </TabsContent>
       <TabsContent value="completed" className="mt-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Completed Services</h3>
           {completedTickets.map((ticket) => (
             <VolunteerTicketCard
               key={ticket.id}
@@ -244,19 +240,18 @@ export function VolunteerDashboardList() {
                 id: ticket.id,
                 title: ticket.title,
                 customer: ticket.customer ? 
-                  `${ticket.customer.first_name} ${ticket.customer.last_name}${ticket.customer.company ? ` · ${ticket.customer.company}` : ''}` : 
+                  ticket.customer.company || ticket.customer.first_name : 
                   'Unknown Organization',
                 status: ticket.status,
                 priority: ticket.priority,
                 createdAt: new Date(ticket.created_at).toLocaleString()
               }}
+              isAssigned={true}
               onAssignmentChange={fetchTickets}
             />
           ))}
           {completedTickets.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-600">You haven't completed any opportunities yet</p>
-            </div>
+            <p className="text-gray-500 text-center py-4">No completed services</p>
           )}
         </div>
       </TabsContent>

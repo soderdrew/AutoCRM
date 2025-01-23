@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Card, CardContent, CardHeader } from "../../ui/card";
 import { VolunteerTicketDetails } from "./VolunteerTicketDetails";
+import { UserCheck } from "lucide-react";
 
 type TicketStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -15,6 +16,7 @@ interface VolunteerTicketCardProps {
     priority: TicketPriority;
     createdAt: string;
   };
+  isAssigned?: boolean;
   onAssignmentChange?: () => void;
 }
 
@@ -33,34 +35,34 @@ const priorityColors = {
   urgent: "bg-red-200 text-red-900",
 };
 
-export function VolunteerTicketCard({ ticket, onAssignmentChange }: VolunteerTicketCardProps) {
+export function VolunteerTicketCard({ ticket, isAssigned, onAssignmentChange }: VolunteerTicketCardProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
     <>
       <Card 
-        className="hover:border-primary/20 transition-colors cursor-pointer"
+        className="cursor-pointer hover:border-primary transition-colors"
         onClick={() => setShowDetails(true)}
       >
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex gap-2">
-              <Badge variant="secondary" className={statusColors[ticket.status]}>
-                {ticket.status.replace("_", " ")}
-              </Badge>
-              <Badge variant="secondary" className={priorityColors[ticket.priority]}>
-                {ticket.priority}
-              </Badge>
-            </div>
-            <div className="text-xs text-gray-400">#{ticket.id.slice(-8)}</div>
+          <div className="flex justify-between items-start gap-4">
+            <h3 className="font-semibold leading-none">{ticket.title}</h3>
+            {isAssigned && (
+              <UserCheck className="h-5 w-5 text-green-600 flex-shrink-0" />
+            )}
           </div>
-          <h3 className="font-semibold text-lg leading-tight">{ticket.title}</h3>
+          <p className="text-sm text-muted-foreground">{ticket.customer}</p>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="truncate">{ticket.customer}</div>
-            <div className="text-xs">{ticket.createdAt}</div>
+          <div className="flex items-center gap-2">
+            <Badge className={statusColors[ticket.status]}>
+              {ticket.status.replace("_", " ")}
+            </Badge>
+            <Badge className={priorityColors[ticket.priority]}>
+              {ticket.priority}
+            </Badge>
           </div>
+          <p className="text-sm text-muted-foreground mt-2">{ticket.createdAt}</p>
         </CardContent>
       </Card>
 
