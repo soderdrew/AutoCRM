@@ -1,4 +1,4 @@
-import { TicketList } from "../layout/TicketList";
+import { VolunteerDashboardList } from "../tickets/volunteer/VolunteerDashboardList";
 
 export function VolunteerDashboard() {
   return (
@@ -29,8 +29,8 @@ export function VolunteerDashboard() {
       </div>
 
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Recent Opportunities</h2>
-        <TicketList />
+        <h2 className="text-2xl font-semibold mb-4">My Opportunities</h2>
+        <VolunteerDashboardList />
       </div>
     </div>
   );

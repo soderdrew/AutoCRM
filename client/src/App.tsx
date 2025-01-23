@@ -10,6 +10,8 @@ import { VolunteerDashboard } from "./components/volunteer/VolunteerDashboard";
 import { volunteerMenuItems } from "./components/volunteer/volunteerConfig";
 import { OrganizationDashboard } from "./components/organizations/OrganizationDashboard";
 import { organizationMenuItems } from "./components/organizations/organizationConfig";
+import { VolunteerTicketList } from "./components/tickets/volunteer/VolunteerTicketList";
+import { Toaster } from "./components/ui/toaster";
 
 // Layout wrapper component
 interface DashboardLayoutProps {
@@ -77,141 +79,150 @@ const OrganizationProfile = () => (
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthComponent />} />
-        
-        {/* Protected volunteer routes */}
-        <Route
-          path="/volunteer/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['employee', 'admin']}>
-              <DashboardLayout userType="volunteer">
-                <VolunteerDashboard />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/volunteer/opportunities"
-          element={
-            <ProtectedRoute allowedRoles={['employee', 'admin']}>
-              <DashboardLayout userType="volunteer">
-                <TicketList />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/volunteer/hours"
-          element={
-            <ProtectedRoute allowedRoles={['employee', 'admin']}>
-              <DashboardLayout userType="volunteer">
-                <ServiceHours />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/volunteer/profile"
-          element={
-            <ProtectedRoute allowedRoles={['employee', 'admin']}>
-              <DashboardLayout userType="volunteer">
-                <Profile />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/volunteer/settings"
-          element={
-            <ProtectedRoute allowedRoles={['employee', 'admin']}>
-              <DashboardLayout userType="volunteer">
-                <Settings />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
+    <>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthComponent />} />
+          
+          {/* Protected volunteer routes */}
+          <Route
+            path="/volunteer/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['employee', 'admin']}>
+                <DashboardLayout userType="volunteer">
+                  <VolunteerDashboard />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/volunteer/opportunities"
+            element={
+              <ProtectedRoute allowedRoles={['employee', 'admin']}>
+                <DashboardLayout userType="volunteer">
+                  <div className="space-y-6">
+                    <div>
+                      <h1 className="text-3xl font-bold tracking-tight">Find Opportunities</h1>
+                      <p className="text-lg text-gray-600">Browse and sign up for volunteer opportunities in your community.</p>
+                    </div>
+                    <VolunteerTicketList />
+                  </div>
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/volunteer/hours"
+            element={
+              <ProtectedRoute allowedRoles={['employee', 'admin']}>
+                <DashboardLayout userType="volunteer">
+                  <ServiceHours />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/volunteer/profile"
+            element={
+              <ProtectedRoute allowedRoles={['employee', 'admin']}>
+                <DashboardLayout userType="volunteer">
+                  <Profile />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/volunteer/settings"
+            element={
+              <ProtectedRoute allowedRoles={['employee', 'admin']}>
+                <DashboardLayout userType="volunteer">
+                  <Settings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Protected organization routes */}
-        <Route
-          path="/organization/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['customer', 'admin']}>
-              <DashboardLayout userType="organization">
-                <OrganizationDashboard />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/organization/opportunities"
-          element={
-            <ProtectedRoute allowedRoles={['customer', 'admin']}>
-              <DashboardLayout userType="organization">
-                <TicketList />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/organization/opportunities/new"
-          element={
-            <ProtectedRoute allowedRoles={['customer', 'admin']}>
-              <DashboardLayout userType="organization">
-                <div>Create New Opportunity</div>
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/organization/profile"
-          element={
-            <ProtectedRoute allowedRoles={['customer', 'admin']}>
-              <DashboardLayout userType="organization">
-                <OrganizationProfile />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/organization/settings"
-          element={
-            <ProtectedRoute allowedRoles={['customer', 'admin']}>
-              <DashboardLayout userType="organization">
-                <Settings />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* Protected organization routes */}
+          <Route
+            path="/organization/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <DashboardLayout userType="organization">
+                  <OrganizationDashboard />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organization/opportunities"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <DashboardLayout userType="organization">
+                  <TicketList />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organization/opportunities/new"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <DashboardLayout userType="organization">
+                  <div>Create New Opportunity</div>
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organization/profile"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <DashboardLayout userType="organization">
+                  <OrganizationProfile />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organization/settings"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <DashboardLayout userType="organization">
+                  <Settings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Protected admin routes */}
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <DashboardLayout userType="admin">
-                <TicketList />
+          {/* Protected admin routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout userType="admin">
+                  <TicketList />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Unauthorized access page */}
+          <Route 
+            path="/unauthorized" 
+            element={
+              <DashboardLayout>
+                <div>Unauthorized Access</div>
               </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
+            } 
+          />
 
-        {/* Unauthorized access page */}
-        <Route 
-          path="/unauthorized" 
-          element={
-            <DashboardLayout>
-              <div>Unauthorized Access</div>
-            </DashboardLayout>
-          } 
-        />
-
-        {/* Catch all route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Catch all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+      <Toaster />
+    </>
   );
 }
