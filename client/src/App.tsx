@@ -5,6 +5,7 @@ import { SidebarProvider } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/layout/AppSidebar";
 import { Header } from "./components/layout/Header";
 import { TicketList } from "./components/layout/TicketList";
+import { LandingPage } from "./components/layout/LandingPage";
 
 // Layout wrapper component
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
@@ -33,11 +34,12 @@ export default function App() {
     <Router>
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthComponent />} />
         
-        {/* Protected customer routes */}
+        {/* Protected organization routes */}
         <Route
-          path="/customer/tickets"
+          path="/organization/opportunities"
           element={
             <ProtectedRoute allowedRoles={['customer', 'admin']}>
               <DashboardLayout>
@@ -47,9 +49,9 @@ export default function App() {
           }
         />
 
-        {/* Protected employee routes */}
+        {/* Protected volunteer routes */}
         <Route
-          path="/employee/tickets"
+          path="/volunteer/opportunities"
           element={
             <ProtectedRoute allowedRoles={['employee', 'admin']}>
               <DashboardLayout>
@@ -81,8 +83,8 @@ export default function App() {
           } 
         />
 
-        {/* Redirect root to appropriate dashboard based on role */}
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

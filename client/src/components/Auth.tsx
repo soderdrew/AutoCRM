@@ -3,7 +3,8 @@ import { Session } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Label } from "../components/ui/label"
 
 const customTheme = {
   default: {
@@ -51,7 +52,18 @@ export default function AuthComponent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [selectedRole, setSelectedRole] = useState<'volunteer' | 'organization' | null>(null)
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const mode = searchParams.get('mode') || 'signin'
+  const type = searchParams.get('type')
+
+  // Set initial role from URL parameter
+  useEffect(() => {
+    if (type === 'volunteer' || type === 'organization') {
+      setSelectedRole(type)
+    }
+  }, [type])
 
   useEffect(() => {
     // Get initial session
@@ -100,8 +112,8 @@ export default function AuthComponent() {
       // Redirect based on role
       const roleRoutes = {
         admin: '/admin/dashboard',
-        employee: '/employee/tickets',
-        customer: '/customer/tickets'
+        employee: '/volunteer/opportunities',
+        customer: '/organization/opportunities'
       }
 
       const route = roleRoutes[data.role as keyof typeof roleRoutes]
@@ -156,13 +168,14 @@ export default function AuthComponent() {
 
   // If user is already logged in and has a role, show appropriate message
   if (session && userRole) {
+    const roleDisplay = userRole === 'customer' ? 'organization' : userRole === 'employee' ? 'volunteer' : userRole
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
           <div className="text-center mb-6">
             <div className="bg-blue-100 text-blue-600 p-4 rounded-lg mb-4">
               <p className="font-medium">Welcome!</p>
-              <p className="text-sm">Redirecting you to the {userRole} dashboard...</p>
+              <p className="text-sm">Redirecting you to the {roleDisplay} dashboard...</p>
             </div>
           </div>
           <button 
@@ -182,20 +195,15 @@ export default function AuthComponent() {
       {/* Left side - Info Section */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 text-white px-16 py-12 flex-col justify-between">
         <div>
-          <h1 className="text-5xl font-bold mb-4">AutoCRM</h1>
-          <h2 className="text-2xl font-semibold mb-12 text-blue-100">Streamline Your Customer Support</h2>
+          <h1 className="text-5xl font-bold mb-4">ServeLocal</h1>
+          <h2 className="text-2xl font-semibold mb-12 text-blue-100">
+            {type === 'organization' 
+              ? 'Connect with Dedicated Volunteers'
+              : type === 'volunteer'
+              ? 'Find Meaningful Service Opportunities'
+              : 'Building Stronger Communities Together'}
+          </h2>
           <div className="space-y-8">
-            <div className="flex items-start space-x-4">
-              <div className="bg-blue-500 rounded-full p-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-1">Ticket Management</h3>
-                <p className="text-blue-100">Efficiently manage and track customer support tickets in one place</p>
-              </div>
-            </div>
             <div className="flex items-start space-x-4">
               <div className="bg-blue-500 rounded-full p-2">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,36 +211,47 @@ export default function AuthComponent() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-1">Team Collaboration</h3>
-                <p className="text-blue-100">Seamless team collaboration and ticket assignment features</p>
+                <h3 className="text-xl font-semibold mb-1">Community Impact</h3>
+                <p className="text-blue-100">Make a real difference in your local community through meaningful service</p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
               <div className="bg-blue-500 rounded-full p-2">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-1">Real-time Updates</h3>
-                <p className="text-blue-100">Get instant notifications and updates on ticket status</p>
+                <h3 className="text-xl font-semibold mb-1">Hour Tracking</h3>
+                <p className="text-blue-100">Easily track and verify volunteer hours for school or organization requirements</p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
               <div className="bg-blue-500 rounded-full p-2">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-1">Analytics</h3>
-                <p className="text-blue-100">Track performance metrics and generate insightful reports</p>
+                <h3 className="text-xl font-semibold mb-1">Easy Matching</h3>
+                <p className="text-blue-100">Connect volunteers with opportunities that match their interests and availability</p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-4">
+              <div className="bg-blue-500 rounded-full p-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-1">Verified Service</h3>
+                <p className="text-blue-100">Get official verification for completed service hours and community impact</p>
               </div>
             </div>
           </div>
         </div>
         <div className="text-sm text-blue-200">
-          © 2024 AutoCRM. All rights reserved.
+          © 2024 ServeLocal. All rights reserved.
         </div>
       </div>
 
@@ -241,28 +260,110 @@ export default function AuthComponent() {
         <div className="w-full max-w-md">
           <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold text-gray-900">Welcome Back</h2>
-              <p className="text-gray-600 mt-2">Sign in to access your account</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {mode === 'signup'
+                  ? 'Welcome to ServeLocal'
+                  : 'Welcome Back'}
+              </h2>
+              <p className="text-gray-600 mt-2">
+                {mode === 'signup'
+                  ? 'Create an account to start your community service journey'
+                  : 'Sign in to continue your community service journey'}
+              </p>
             </div>
-            <Auth
-              supabaseClient={supabase}
-              appearance={{ 
-                theme: ThemeSupa,
-                variables: customTheme,
-                className: {
-                  container: 'w-full',
-                  button: 'w-full px-4 py-2 rounded-lg font-medium',
-                  input: 'w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  label: 'block text-sm font-medium text-gray-700 mb-1',
-                  loader: 'w-6 h-6 border-2 border-blue-600',
-                }
-              }}
-              providers={[]}
-              theme="default"
-            />
+
+            {/* Role Selector for Sign Up */}
+            {mode === 'signup' && (
+              <div className="mb-8">
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">I want to join as:</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    className={`p-4 text-left border rounded-lg transition-colors ${
+                      selectedRole === 'volunteer'
+                        ? 'border-blue-600 bg-blue-50 text-blue-600'
+                        : 'border-gray-200 hover:border-blue-200'
+                    }`}
+                    onClick={() => {
+                      setSelectedRole('volunteer')
+                      setSearchParams({ mode: 'signup', type: 'volunteer' })
+                    }}
+                  >
+                    <div className="font-semibold mb-1">Volunteer</div>
+                    <div className="text-sm text-gray-600">
+                      Find and participate in community service opportunities
+                    </div>
+                  </button>
+                  <button
+                    className={`p-4 text-left border rounded-lg transition-colors ${
+                      selectedRole === 'organization'
+                        ? 'border-blue-600 bg-blue-50 text-blue-600'
+                        : 'border-gray-200 hover:border-blue-200'
+                    }`}
+                    onClick={() => {
+                      setSelectedRole('organization')
+                      setSearchParams({ mode: 'signup', type: 'organization' })
+                    }}
+                  >
+                    <div className="font-semibold mb-1">Organization</div>
+                    <div className="text-sm text-gray-600">
+                      Post opportunities and connect with volunteers
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Show auth form only if signing in or role is selected */}
+            {(mode === 'signin' || selectedRole) && (
+              <Auth
+                supabaseClient={supabase}
+                appearance={{ 
+                  theme: ThemeSupa,
+                  variables: {
+                    default: {
+                      colors: {
+                        brand: '#2563eb',
+                        brandAccent: '#1d4ed8',
+                      },
+                    },
+                  },
+                }}
+                theme="default"
+                providers={[]}
+                redirectTo={window.location.origin + '/auth/callback'}
+                magicLink={false}
+                showLinks={mode === 'signup'}
+                view={mode === 'signup' ? 'sign_up' : 'sign_in'}
+                localization={{
+                  variables: {
+                    sign_up: {
+                      email_label: 'Email',
+                      password_label: 'Create Password',
+                      email_input_placeholder: 'Enter your email',
+                      password_input_placeholder: 'Create a secure password',
+                      button_label: 'Sign Up',
+                      loading_button_label: 'Creating Account...',
+                      social_provider_text: 'Sign in with {{provider}}',
+                      link_text: 'Already have an account? Sign in',
+                      confirmation_text: 'Check your email for the confirmation link',
+                    },
+                    sign_in: {
+                      email_label: 'Email',
+                      password_label: 'Password',
+                      email_input_placeholder: 'Enter your email',
+                      password_input_placeholder: 'Enter your password',
+                      button_label: 'Sign In',
+                      loading_button_label: 'Signing in...',
+                      social_provider_text: 'Sign in with {{provider}}',
+                      link_text: '',
+                    },
+                  },
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 } 
