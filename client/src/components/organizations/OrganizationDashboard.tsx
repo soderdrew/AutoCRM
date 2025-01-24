@@ -6,13 +6,15 @@ interface DashboardStats {
   activeOpportunities: number;
   totalVolunteers: number;
   serviceHours: number;
+  openSlots: number;
 }
 
 export function OrganizationDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     activeOpportunities: 0,
     totalVolunteers: 0,
-    serviceHours: 0
+    serviceHours: 0,
+    openSlots: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,32 +35,39 @@ export function OrganizationDashboard() {
         // Fetch all tickets for this organization
         const { data: tickets, error: ticketsError } = await supabase
           .from('tickets')
-          .select('status, current_volunteers, duration')
+          .select('status, current_volunteers, max_volunteers, duration')
           .eq('customer_id', user.id);
 
         if (ticketsError) throw ticketsError;
 
         if (tickets) {
           // Calculate active opportunities
-          const activeCount = tickets.filter(ticket => 
+          const activeTickets = tickets.filter(ticket => 
             !['completed', 'closed', 'resolved'].includes(ticket.status)
-          ).length;
+          );
+          const activeCount = activeTickets.length;
 
-          // Calculate total volunteers
-          const totalVolunteers = tickets.reduce((sum, ticket) => 
+          // Calculate total volunteers across active opportunities only
+          const totalVolunteers = activeTickets.reduce((sum, ticket) => 
             sum + (ticket.current_volunteers || 0), 0
           );
 
-          // Calculate total service hours
-          // duration is in minutes, so divide by 60 to get hours
-          const serviceHours = tickets.reduce((sum, ticket) => 
-            sum + ((ticket.duration || 0) * (ticket.current_volunteers || 0) / 60), 0
+          // Calculate total open slots across active opportunities
+          const openSlots = activeTickets.reduce((sum, ticket) => {
+            const remainingSpots = (ticket.max_volunteers || 0) - (ticket.current_volunteers || 0);
+            return sum + Math.max(0, remainingSpots);
+          }, 0);
+
+          // Calculate total service hours from active opportunities
+          const serviceHours = activeTickets.reduce((sum, ticket) => 
+            sum + ((ticket.duration || 0) / 60), 0
           );
 
           setStats({
             activeOpportunities: activeCount,
             totalVolunteers: totalVolunteers,
-            serviceHours: Number(serviceHours.toFixed(1))  // Show one decimal place
+            serviceHours: Number(serviceHours.toFixed(1)),
+            openSlots: openSlots
           });
         }
       } catch (err) {
@@ -81,7 +90,7 @@ export function OrganizationDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="bg-white p-6 rounded-lg border border-gray-200">
           <h3 className="font-semibold mb-2">Active Opportunities</h3>
           {loading ? (
@@ -96,7 +105,7 @@ export function OrganizationDashboard() {
           )}
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="font-semibold mb-2">Total Volunteers</h3>
+          <h3 className="font-semibold mb-2">Volunteers Signed Up</h3>
           {loading ? (
             <div className="animate-pulse">
               <div className="h-8 w-16 bg-gray-200 rounded"></div>
@@ -104,7 +113,20 @@ export function OrganizationDashboard() {
           ) : (
             <>
               <p className="text-3xl font-bold text-blue-600">{stats.totalVolunteers}</p>
-              <p className="text-sm text-gray-600 mt-1">Across all opportunities</p>
+              <p className="text-sm text-gray-600 mt-1">Across all active opportunities</p>
+            </>
+          )}
+        </div>
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h3 className="font-semibold mb-2">Open Volunteer Slots</h3>
+          {loading ? (
+            <div className="animate-pulse">
+              <div className="h-8 w-16 bg-gray-200 rounded"></div>
+            </div>
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-blue-600">{stats.openSlots}</p>
+              <p className="text-sm text-gray-600 mt-1">Available positions</p>
             </>
           )}
         </div>
@@ -117,7 +139,7 @@ export function OrganizationDashboard() {
           ) : (
             <>
               <p className="text-3xl font-bold text-blue-600">{stats.serviceHours}</p>
-              <p className="text-sm text-gray-600 mt-1">Total volunteer hours</p>
+              <p className="text-sm text-gray-600 mt-1">Total hours across active opportunities</p>
             </>
           )}
         </div>

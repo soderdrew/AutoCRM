@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { TicketDetails } from "./TicketDetails";
-import { Users } from "lucide-react";
+import { Users, MapPin, Clock } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 interface TicketCardProps {
@@ -15,6 +15,10 @@ interface TicketCardProps {
     createdAt: string;
     currentVolunteers?: number;
     maxVolunteers?: number;
+    location?: string;
+    eventDate?: string;
+    eventTime?: string;
+    duration?: number;
   };
 }
 
@@ -39,6 +43,22 @@ export function TicketCard({ ticket }: TicketCardProps) {
                  ticket.maxVolunteers !== undefined && 
                  ticket.currentVolunteers >= ticket.maxVolunteers;
 
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours === 0) return `${remainingMinutes} minutes`;
+    if (remainingMinutes === 0) return `${hours} hours`;
+    return `${hours}h ${remainingMinutes}m`;
+  };
+
+  const formatDateTime = () => {
+    const parts = [];
+    if (ticket.eventDate) parts.push(ticket.eventDate);
+    if (ticket.eventTime) parts.push(`at ${ticket.eventTime}`);
+    if (ticket.duration) parts.push(`(${formatDuration(ticket.duration)})`);
+    return parts.join(" ");
+  };
+
   return (
     <>
       <Card 
@@ -46,32 +66,42 @@ export function TicketCard({ ticket }: TicketCardProps) {
         onClick={() => setShowDetails(true)}
       >
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex gap-2">
-              <Badge variant="secondary" className={statusColors[ticket.status]}>
-                {ticket.status.replace("_", " ")}
-              </Badge>
-              <Badge variant="secondary" className={priorityColors[ticket.priority]}>
-                {ticket.priority}
-              </Badge>
-              {(ticket.currentVolunteers !== undefined && ticket.maxVolunteers !== undefined) && (
-                <div className={cn(
-                  "flex items-center gap-1 text-sm",
-                  isFull ? "text-green-600" : "text-gray-600"
-                )}>
-                  <Users className="h-4 w-4" />
-                  <span>{ticket.currentVolunteers}/{ticket.maxVolunteers}</span>
-                </div>
-              )}
-            </div>
-            <div className="text-xs text-gray-400">#{ticket.id.slice(-8)}</div>
+          <h3 className="font-semibold text-xl mb-2">{ticket.title}</h3>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className={statusColors[ticket.status]}>
+              {ticket.status.replace("_", " ")}
+            </Badge>
+            <Badge variant="secondary" className={priorityColors[ticket.priority]}>
+              {ticket.priority}
+            </Badge>
+            {(ticket.currentVolunteers !== undefined && ticket.maxVolunteers !== undefined) && (
+              <div className={cn(
+                "flex items-center gap-1 text-sm ml-auto",
+                isFull ? "text-green-600" : "text-gray-500"
+              )}>
+                <Users className="h-4 w-4" />
+                <span>{ticket.currentVolunteers}/{ticket.maxVolunteers}</span>
+              </div>
+            )}
           </div>
-          <h3 className="font-semibold text-lg leading-tight">{ticket.title}</h3>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="truncate">{ticket.customer}</div>
-            <div className="text-xs">{ticket.createdAt}</div>
+          <div className="space-y-1.5 text-sm text-gray-500">
+            {ticket.location && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span>{ticket.location}</span>
+              </div>
+            )}
+            {(ticket.eventDate || ticket.eventTime || ticket.duration) && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>{formatDateTime()}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 text-xs text-gray-400">
+            #{ticket.id.slice(-8)}
           </div>
         </CardContent>
       </Card>

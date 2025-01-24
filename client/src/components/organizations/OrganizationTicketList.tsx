@@ -15,8 +15,16 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
     last_name: string;
     company: string | null;
   } | null;
+  customer_id: string;
   current_volunteers: number;
   max_volunteers: number;
+  location: string | null;
+  event_date: string | null;
+  duration: number | null;
+  created_at: string;
+  title: string;
+  status: 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
 };
 
 export function OrganizationTicketList() {
@@ -39,7 +47,10 @@ export function OrganizationTicketList() {
         .from('tickets')
         .select('*')
         .eq('customer_id', organizationId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as { 
+          data: Database['public']['Tables']['tickets']['Row'][] | null; 
+          error: any; 
+        };
 
       if (ticketsError) throw ticketsError;
 
@@ -55,7 +66,14 @@ export function OrganizationTicketList() {
         .select('first_name, last_name, company')
         .eq('user_id', organizationId)
         .eq('role', 'customer')
-        .single();
+        .single() as {
+          data: {
+            first_name: string;
+            last_name: string;
+            company: string | null;
+          } | null;
+          error: any;
+        };
 
       if (orgError) {
         console.error('Error fetching organization details:', orgError);
@@ -65,7 +83,7 @@ export function OrganizationTicketList() {
       const ticketsWithOrg = ticketsData.map(ticket => ({
         ...ticket,
         organization: orgData || null
-      }));
+      })) as Ticket[];
 
       // Split tickets into active and completed
       const active = ticketsWithOrg.filter(ticket => 
@@ -204,10 +222,14 @@ export function OrganizationTicketList() {
                     priority: ticket.priority,
                     createdAt: new Date(ticket.created_at).toLocaleString(),
                     currentVolunteers: ticket.current_volunteers,
-                    maxVolunteers: ticket.max_volunteers
+                    maxVolunteers: ticket.max_volunteers,
+                    location: ticket.location || undefined,
+                    eventDate: ticket.event_date ? new Date(ticket.event_date).toLocaleDateString() : undefined,
+                    eventTime: ticket.event_date ? new Date(ticket.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
+                    duration: ticket.duration || undefined
                   }}
                   isOwner={ticket.customer_id === organizationId}
-                  onClick={() => {}}  // No-op since we don't want to show details
+                  onClick={() => {}}
                   onEditClick={() => setEditingTicketId(ticket.id)}
                 />
               ))}
@@ -236,10 +258,14 @@ export function OrganizationTicketList() {
                     priority: ticket.priority,
                     createdAt: new Date(ticket.created_at).toLocaleString(),
                     currentVolunteers: ticket.current_volunteers,
-                    maxVolunteers: ticket.max_volunteers
+                    maxVolunteers: ticket.max_volunteers,
+                    location: ticket.location || undefined,
+                    eventDate: ticket.event_date ? new Date(ticket.event_date).toLocaleDateString() : undefined,
+                    eventTime: ticket.event_date ? new Date(ticket.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
+                    duration: ticket.duration || undefined
                   }}
                   isOwner={ticket.customer_id === organizationId}
-                  onClick={() => {}}  // No-op since we don't want to show details
+                  onClick={() => {}}
                   onEditClick={() => setEditingTicketId(ticket.id)}
                 />
               ))}

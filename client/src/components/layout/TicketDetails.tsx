@@ -45,6 +45,19 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   team: {
     name: string;
   } | null;
+  description: string;
+  location: string | null;
+  event_date: string | null;
+  duration: number | null;
+  current_volunteers: number;
+  max_volunteers: number;
+  tags: string[];
+  status: 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  closed_at: string | null;
 };
 
 type Comment = Database['public']['Tables']['ticket_comments']['Row'] & {
@@ -395,6 +408,14 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
 
   const canEditTicket = userRole === 'admin' || userRole === 'employee';
 
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours === 0) return `${remainingMinutes} minutes`;
+    if (remainingMinutes === 0) return `${hours} hours`;
+    return `${hours}h ${remainingMinutes}m`;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -420,91 +441,65 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
         ) : ticket ? (
           <>
             <DialogHeader className="pb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="secondary" className={statusColors[ticket.status]}>
+                  {ticket.status.replace("_", " ")}
+                </Badge>
+                <Badge variant="secondary" className={priorityColors[ticket.priority]}>
+                  {ticket.priority}
+                </Badge>
+              </div>
               <DialogTitle className="text-xl font-semibold">
                 {ticket.title}
               </DialogTitle>
-              <DialogDescription>
-                Ticket #{ticket.id.slice(-8)}
+              <DialogDescription className="text-sm text-gray-500">
+                Created {format(new Date(ticket.created_at), 'PPpp')}
               </DialogDescription>
             </DialogHeader>
 
             <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
               <div className="space-y-6">
-                {/* Status and Priority */}
-                <div className="flex items-center gap-6">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                    {canEditTicket ? (
-                      <Select
-                        value={ticket.status}
-                        onValueChange={(value: Status) => handleStatusChange(value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className={`w-[140px] ${statusColors[ticket.status]}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="waiting">Waiting</SelectItem>
-                          <SelectItem value="resolved">Resolved</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge className={statusColors[ticket.status]}>
-                        {ticket.status.replace("_", " ")}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Priority</h3>
-                    {canEditTicket ? (
-                      <Select
-                        value={ticket.priority}
-                        onValueChange={(value: Priority) => handlePriorityChange(value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className={`w-[140px] ${priorityColors[ticket.priority]}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge className={priorityColors[ticket.priority]}>
-                        {ticket.priority}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {ticket.team && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium text-muted-foreground">Team</h3>
-                      <Badge variant="outline">
-                        {ticket.team.name}
-                      </Badge>
-                    </div>
-                  )}
-
-                  <TicketAssignment ticketId={ticket.id} />
-                </div>
-
-                {/* Customer Information */}
+                {/* Organization */}
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Customer</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Organization</h3>
                   <p className="text-sm">
                     {ticket.customer
                       ? `${ticket.customer.first_name} ${ticket.customer.last_name}${
                           ticket.customer.company ? ` · ${ticket.customer.company}` : ''
                         }`
-                      : 'Unknown Customer'}
+                      : 'Unknown Organization'}
                   </p>
+                </div>
+
+                {/* Event Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  {ticket.location && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
+                      <p className="text-sm">{ticket.location}</p>
+                    </div>
+                  )}
+                  {ticket.event_date && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Date & Time</h3>
+                      <p className="text-sm">
+                        {format(new Date(ticket.event_date), 'PPp')}
+                      </p>
+                    </div>
+                  )}
+                  {ticket.duration && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Duration</h3>
+                      <p className="text-sm">{formatDuration(ticket.duration)}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Volunteer Capacity</h3>
+                    <p className="text-sm">
+                      {ticket.current_volunteers}/{ticket.max_volunteers} volunteers
+                      {ticket.current_volunteers >= ticket.max_volunteers && " (Full)"}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Description */}

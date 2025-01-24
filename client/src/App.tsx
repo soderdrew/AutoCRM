@@ -13,6 +13,7 @@ import { organizationMenuItems } from "./components/organizations/organizationCo
 import { VolunteerTicketList } from "./components/tickets/volunteer/VolunteerTicketList";
 import { Toaster } from "./components/ui/toaster";
 import { VolunteerMetrics } from "./components/volunteer/VolunteerMetrics";
+import { OrganizationTicketList } from "./components/organizations/OrganizationTicketList";
 
 // Layout wrapper component
 interface DashboardLayoutProps {
@@ -152,26 +153,6 @@ export default function App() {
               <ProtectedRoute allowedRoles={['customer', 'admin']}>
                 <DashboardLayout userType="organization">
                   <OrganizationDashboard />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/organization/opportunities"
-            element={
-              <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                <DashboardLayout userType="organization">
-                  <TicketList />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/organization/opportunities/new"
-            element={
-              <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                <DashboardLayout userType="organization">
-                  <div>Create New Opportunity</div>
                 </DashboardLayout>
               </ProtectedRoute>
             }

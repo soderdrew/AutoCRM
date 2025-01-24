@@ -16,6 +16,10 @@ interface OrganizationTicketCardProps {
     createdAt: string;
     currentVolunteers?: number;
     maxVolunteers?: number;
+    location?: string;
+    eventDate?: string;
+    eventTime?: string;
+    duration?: number;
   };
   isOwner: boolean;
   onEditClick: () => void;
@@ -42,7 +46,7 @@ export function OrganizationTicketCard({
         <Button
           size="icon"
           variant="ghost"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute right-4 top-4 text-gray-500 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => {
             e.stopPropagation();
             onEditClick();
