@@ -12,6 +12,11 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
     last_name: string;
     company: string | null;
   } | null;
+  event_date: string;
+  duration: number;
+  location: string;
+  current_volunteers: number;
+  max_volunteers: number;
 };
 
 export function VolunteerDashboardList() {
@@ -56,7 +61,7 @@ export function VolunteerDashboardList() {
       const assignedTicketIds = assignmentsData.map(a => a.ticket_id);
       console.log('Assigned ticket IDs:', assignedTicketIds);
 
-      // Then fetch the assigned tickets
+      // Then fetch the assigned tickets with new fields
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select(`
@@ -72,7 +77,12 @@ export function VolunteerDashboardList() {
           created_at,
           updated_at,
           resolved_at,
-          closed_at
+          closed_at,
+          event_date,
+          duration,
+          location,
+          current_volunteers,
+          max_volunteers
         `)
         .in('id', assignedTicketIds)
         .order('created_at', { ascending: false });
@@ -219,7 +229,12 @@ export function VolunteerDashboardList() {
                   'Unknown Organization',
                 status: ticket.status,
                 priority: ticket.priority,
-                createdAt: new Date(ticket.created_at).toLocaleString()
+                createdAt: new Date(ticket.created_at).toLocaleString(),
+                eventDate: ticket.event_date ? new Date(ticket.event_date) : null,
+                duration: ticket.duration || 0,
+                location: ticket.location || 'Location not specified',
+                currentVolunteers: ticket.current_volunteers || 0,
+                maxVolunteers: ticket.max_volunteers || 0
               }}
               isAssigned={true}
               onAssignmentChange={fetchTickets}
@@ -244,7 +259,12 @@ export function VolunteerDashboardList() {
                   'Unknown Organization',
                 status: ticket.status,
                 priority: ticket.priority,
-                createdAt: new Date(ticket.created_at).toLocaleString()
+                createdAt: new Date(ticket.created_at).toLocaleString(),
+                eventDate: ticket.event_date ? new Date(ticket.event_date) : null,
+                duration: ticket.duration || 0,
+                location: ticket.location || 'Location not specified',
+                currentVolunteers: ticket.current_volunteers || 0,
+                maxVolunteers: ticket.max_volunteers || 0
               }}
               isAssigned={true}
               onAssignmentChange={fetchTickets}

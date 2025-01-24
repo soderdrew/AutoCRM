@@ -29,6 +29,11 @@ type Ticket = Omit<Database['public']['Tables']['tickets']['Row'], 'status'> & {
   team: {
     name: string;
   } | null;
+  duration: number;
+  event_date: string;
+  location: string;
+  max_volunteers: number;
+  current_volunteers: number;
 };
 
 type Comment = Database['public']['Tables']['ticket_comments']['Row'] & {
@@ -59,6 +64,15 @@ const priorityColors = {
   medium: "bg-orange-100 text-orange-800",
   high: "bg-red-100 text-red-800",
   urgent: "bg-red-200 text-red-900",
+};
+
+// Add formatDuration utility
+const formatDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins} minutes`;
+  if (mins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+  return `${hours} hour${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
 };
 
 export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssignmentChange }: TicketDetailsProps) {
@@ -211,13 +225,12 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
       if (isAssigned) {
         // Check if ticket is in progress before allowing unassignment
         if (ticket.status === 'in_progress') {
-          console.log('Attempting to leave in-progress opportunity');
-          setUpdating(false);  // Reset updating state before showing toast
+          setUpdating(false);
           toast({
             title: "Cannot Leave Opportunity",
             description: "You cannot leave an opportunity that is in progress. Please contact the organization if you need to make changes.",
             variant: "destructive",
-            duration: 5000,  // Show for longer
+            duration: 5000,
           });
           return;
         }
@@ -231,28 +244,31 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
 
         if (updateError) throw updateError;
 
+        // Decrement current_volunteers count using RPC
+        const { error: updateCountError } = await supabase
+          .rpc('decrement_volunteer_count', {
+            ticket_id: ticket.id
+          });
+
+        if (updateCountError) throw updateCountError;
+
+        // Update local state immediately
+        setTicket(prev => prev ? {
+          ...prev,
+          current_volunteers: Math.max(prev.current_volunteers - 1, 0),
+          status: prev.current_volunteers - 1 === 0 ? 'open' : prev.status
+        } : null);
+
         setIsAssigned(false);
         toast({
           title: "Left opportunity",
           description: "You have been removed from this opportunity.",
         });
-
-        // Update ticket status if it was assigned to you
-        if (ticket.status === 'assigned') {
-          const { error: updateTicketError } = await supabase
-            .from('tickets')
-            .update({ status: 'open' })
-            .eq('id', ticket.id);
-
-          if (updateTicketError) {
-            console.error('Error updating ticket status:', updateTicketError);
-          }
-        }
       } else {
         // Check if ticket is still available
         const { data: currentTicket, error: checkError } = await supabase
           .from('tickets')
-          .select('status')
+          .select('status, current_volunteers, max_volunteers')
           .eq('id', ticket.id)
           .single();
 
@@ -263,6 +279,17 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
             title: "Opportunity unavailable",
             description: "This opportunity is no longer available.",
             variant: "destructive",
+          });
+          return;
+        }
+
+        // Check if opportunity is full
+        if (currentTicket.current_volunteers >= currentTicket.max_volunteers) {
+          toast({
+            title: "Opportunity Full",
+            description: "This opportunity has reached its maximum number of volunteers.",
+            variant: "destructive",
+            duration: 5000,
           });
           return;
         }
@@ -290,8 +317,7 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
           ]);
 
         if (insertError) {
-          // Check if it's a duplicate assignment
-          if (insertError.code === '23505') {  // Unique violation
+          if (insertError.code === '23505') {
             toast({
               title: "Already signed up",
               description: "You are already signed up for this opportunity.",
@@ -301,6 +327,20 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
           }
           throw insertError;
         }
+
+        // Increment current_volunteers count
+        const { error: updateCountError } = await supabase
+          .from('tickets')
+          .update({ current_volunteers: currentTicket.current_volunteers + 1 })
+          .eq('id', ticket.id);
+
+        if (updateCountError) throw updateCountError;
+
+        // Update local state immediately
+        setTicket(prev => prev ? {
+          ...prev,
+          current_volunteers: prev.current_volunteers + 1
+        } : null);
 
         setIsAssigned(true);
         toast({
@@ -433,6 +473,57 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
                   <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
+                </div>
+
+                {/* Event Details */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Event Details</h3>
+                  
+                  {/* Date and Time */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Date & Time</h4>
+                      <p className="text-sm">
+                        {ticket.event_date ? (
+                          format(new Date(ticket.event_date), "PPP 'at' p")
+                        ) : (
+                          'Not specified'
+                        )}
+                      </p>
+                    </div>
+                    
+                    {/* Duration */}
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Duration</h4>
+                      <p className="text-sm">
+                        {ticket.duration ? formatDuration(ticket.duration) : 'Not specified'}
+                      </p>
+                      {ticket.event_date && ticket.duration && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ends at: {format(
+                            new Date(new Date(ticket.event_date).getTime() + ticket.duration * 60000),
+                            "p"
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Location</h4>
+                    <p className="text-sm">
+                      {ticket.location || 'Not specified'}
+                    </p>
+                  </div>
+
+                  {/* Volunteer Capacity */}
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Volunteer Capacity</h4>
+                    <p className="text-sm">
+                      {ticket.current_volunteers} / {ticket.max_volunteers} volunteers signed up
+                    </p>
+                  </div>
                 </div>
 
                 {/* Tags */}

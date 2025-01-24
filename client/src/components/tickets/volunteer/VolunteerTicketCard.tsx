@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Card, CardContent, CardHeader } from "../../ui/card";
 import { VolunteerTicketDetails } from "./VolunteerTicketDetails";
-import { UserCheck } from "lucide-react";
+import { UserCheck, Users, Clock, MapPin } from "lucide-react";
+import { format } from "date-fns";
 
 type TicketStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -15,6 +16,11 @@ interface VolunteerTicketCardProps {
     status: TicketStatus;
     priority: TicketPriority;
     createdAt: string;
+    eventDate: Date | null;
+    duration: number;
+    location: string;
+    currentVolunteers: number;
+    maxVolunteers: number;
   };
   isAssigned?: boolean;
   onAssignmentChange?: () => void;
@@ -33,6 +39,14 @@ const priorityColors = {
   medium: "bg-orange-100 text-orange-800",
   high: "bg-red-100 text-red-800",
   urgent: "bg-red-200 text-red-900",
+};
+
+const formatDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
 };
 
 export function VolunteerTicketCard({ ticket, isAssigned, onAssignmentChange }: VolunteerTicketCardProps) {
@@ -54,15 +68,36 @@ export function VolunteerTicketCard({ ticket, isAssigned, onAssignmentChange }: 
           <p className="text-sm text-muted-foreground">{ticket.customer}</p>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             <Badge className={statusColors[ticket.status]}>
               {ticket.status.replace("_", " ")}
             </Badge>
             <Badge className={priorityColors[ticket.priority]}>
               {ticket.priority}
             </Badge>
+            <div className="flex items-center gap-1 text-sm text-gray-600">
+              <Users className="h-4 w-4" />
+              <span>{ticket.currentVolunteers}/{ticket.maxVolunteers}</span>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">{ticket.createdAt}</p>
+          
+          {/* Event Details */}
+          <div className="space-y-2 text-sm text-muted-foreground">
+            {ticket.eventDate && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>{format(ticket.eventDate, "PPP 'at' p")}</span>
+                <span>·</span>
+                <span>{formatDuration(ticket.duration)}</span>
+              </div>
+            )}
+            {ticket.location && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span className="truncate">{ticket.location}</span>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

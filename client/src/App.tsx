@@ -12,6 +12,7 @@ import { OrganizationDashboard } from "./components/organizations/OrganizationDa
 import { organizationMenuItems } from "./components/organizations/organizationConfig";
 import { VolunteerTicketList } from "./components/tickets/volunteer/VolunteerTicketList";
 import { Toaster } from "./components/ui/toaster";
+import { VolunteerMetrics } from "./components/volunteer/VolunteerMetrics";
 
 // Layout wrapper component
 interface DashboardLayoutProps {
@@ -118,7 +119,7 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['employee', 'admin']}>
                 <DashboardLayout userType="volunteer">
-                  <ServiceHours />
+                  <VolunteerMetrics />
                 </DashboardLayout>
               </ProtectedRoute>
             }

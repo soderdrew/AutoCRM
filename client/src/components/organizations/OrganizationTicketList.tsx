@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
 import { PlusCircle } from "lucide-react";
-import { Link } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import type { Database } from "../../types/supabase";
 import { OrganizationTicketCard } from "./OrganizationTicketCard";
@@ -178,7 +177,7 @@ export function OrganizationTicketList() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Your Opportunities</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="mr-2 h-4 w-4" />
           Create New Opportunity
         </Button>
       </div>
