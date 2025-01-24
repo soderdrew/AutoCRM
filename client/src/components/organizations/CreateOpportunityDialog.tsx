@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
@@ -19,27 +19,17 @@ import {
   DialogDescription,
 } from "../ui/dialog";
 import { supabase } from "../../supabaseClient";
-import type { Database } from "../../types/supabase";
-import { format, set } from "date-fns";
+import { format } from "date-fns";
 import { useToast } from "../../hooks/use-toast";
-import { Loader2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 type DatabaseTicketStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed' | 'assigned';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-type Ticket = Database['public']['Tables']['tickets']['Row'] & {
-  organization: {
-    first_name: string;
-    last_name: string;
-    company: string | null;
-  } | null;
-};
-
-interface OrganizationTicketDetailsProps {
-  ticketId: string | null;
+interface CreateOpportunityDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onTicketUpdate?: () => void;
+  onOpportunityCreated?: () => void;
 }
 
 const statusOptions: DatabaseTicketStatus[] = ['open', 'in_progress', 'waiting', 'resolved', 'closed', 'assigned'];
@@ -87,22 +77,18 @@ const parseDuration = (input: string): number | null => {
   return null;
 };
 
-export function OrganizationTicketDetails({ 
-  ticketId, 
+export function CreateOpportunityDialog({ 
   isOpen, 
   onOpenChange,
-  onTicketUpdate 
-}: OrganizationTicketDetailsProps) {
-  const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [loading, setLoading] = useState(false);
+  onOpportunityCreated 
+}: CreateOpportunityDialogProps) {
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [tagsInput, setTagsInput] = useState('');
-  const [editedFields, setEditedFields] = useState({
+  const [fields, setFields] = useState({
     title: '',
     description: '',
-    status: '' as DatabaseTicketStatus,
-    priority: '' as TicketPriority,
+    status: 'open' as DatabaseTicketStatus,
+    priority: 'medium' as TicketPriority,
     tags: [] as string[],
     duration: '',
     durationMinutes: 0,
@@ -112,77 +98,36 @@ export function OrganizationTicketDetails({
     current_volunteers: 0
   });
   const { toast } = useToast();
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  useEffect(() => {
-    if (!ticketId) return;
+  // Reset form to initial state
+  const resetForm = () => {
+    setFields({
+      title: '',
+      description: '',
+      status: 'open',
+      priority: 'medium',
+      tags: [],
+      duration: '',
+      durationMinutes: 0,
+      event_date: null,
+      location: '',
+      max_volunteers: 1,
+      current_volunteers: 0
+    });
+    setTagsInput('');
+  };
 
-    const fetchTicketDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select('*')
-          .eq('id', ticketId)
-          .single();
-
-        if (ticketError) throw ticketError;
-
-        const { data: orgData, error: orgError } = await supabase
-          .from('user_roles')
-          .select('first_name, last_name, company')
-          .eq('user_id', ticketData.customer_id)
-          .eq('role', 'customer')
-          .single();
-
-        if (orgError) {
-          console.error('Error fetching organization details:', orgError);
-        }
-
-        const fullTicket = {
-          ...ticketData,
-          organization: orgData || null
-        };
-
-        setTicket(fullTicket);
-        setTagsInput(fullTicket.tags?.join(', ') || '');
-        setEditedFields({
-          title: fullTicket.title,
-          description: fullTicket.description || '',
-          status: fullTicket.status as DatabaseTicketStatus,
-          priority: fullTicket.priority as TicketPriority,
-          tags: fullTicket.tags || [],
-          duration: fullTicket.duration ? formatDuration(fullTicket.duration) : '',
-          durationMinutes: fullTicket.duration || 0,
-          event_date: fullTicket.event_date ? new Date(fullTicket.event_date) : null,
-          location: fullTicket.location || '',
-          max_volunteers: fullTicket.max_volunteers || 1,
-          current_volunteers: fullTicket.current_volunteers || 0
-        });
-      } catch (err) {
-        console.error('Error fetching ticket details:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load ticket details');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTicketDetails();
-  }, [ticketId]);
+  // Handle dialog close
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      resetForm();
+    }
+    onOpenChange(open);
+  };
 
   const handleSave = async () => {
-    if (!ticket) {
-      toast({
-        title: "Error",
-        description: "Unable to save changes: Opportunity not found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!editedFields.title.trim()) {
+    // Validate required fields
+    if (!fields.title.trim()) {
       toast({
         title: "Title is required",
         description: "Please enter a title for the opportunity.",
@@ -191,7 +136,7 @@ export function OrganizationTicketDetails({
       return;
     }
 
-    if (!editedFields.description.trim()) {
+    if (!fields.description.trim()) {
       toast({
         title: "Description is required",
         description: "Please enter a description for the opportunity.",
@@ -200,7 +145,7 @@ export function OrganizationTicketDetails({
       return;
     }
 
-    if (!editedFields.event_date) {
+    if (!fields.event_date) {
       toast({
         title: "Event date and time are required",
         description: "Please select when the opportunity will take place.",
@@ -209,7 +154,7 @@ export function OrganizationTicketDetails({
       return;
     }
 
-    if (!editedFields.durationMinutes) {
+    if (!fields.durationMinutes) {
       toast({
         title: "Duration is required",
         description: "Please specify how long the opportunity will last.",
@@ -218,7 +163,7 @@ export function OrganizationTicketDetails({
       return;
     }
 
-    if (!editedFields.location.trim()) {
+    if (!fields.location.trim()) {
       toast({
         title: "Location is required",
         description: "Please specify where the opportunity will take place.",
@@ -229,37 +174,44 @@ export function OrganizationTicketDetails({
 
     try {
       setSaving(true);
-      const { error: updateError } = await supabase
-        .from('tickets')
-        .update({
-          title: editedFields.title,
-          description: editedFields.description,
-          status: editedFields.status,
-          priority: editedFields.priority,
-          tags: editedFields.tags,
-          duration: editedFields.durationMinutes,
-          event_date: editedFields.event_date?.toISOString(),
-          location: editedFields.location,
-          max_volunteers: editedFields.max_volunteers,
-          current_volunteers: editedFields.current_volunteers,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ticket.id);
 
-      if (updateError) throw updateError;
+      // Get the current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error: createError } = await supabase
+        .from('tickets')
+        .insert({
+          title: fields.title,
+          description: fields.description,
+          status: fields.status,
+          priority: fields.priority,
+          tags: fields.tags,
+          duration: fields.durationMinutes,
+          event_date: fields.event_date?.toISOString(),
+          location: fields.location,
+          max_volunteers: fields.max_volunteers,
+          current_volunteers: fields.current_volunteers,
+          customer_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (createError) throw createError;
 
       toast({
-        title: "Changes saved",
-        description: "Your opportunity has been updated successfully.",
+        title: "Opportunity created",
+        description: "Your volunteer opportunity has been created successfully.",
       });
 
-      onTicketUpdate?.();
+      onOpportunityCreated?.();
+      resetForm();
       onOpenChange(false);
     } catch (err) {
-      console.error('Error updating ticket:', err);
+      console.error('Error creating opportunity:', err);
       toast({
-        title: "Error saving changes",
-        description: err instanceof Error ? err.message : "Failed to save changes",
+        title: "Error creating opportunity",
+        description: err instanceof Error ? err.message : "Failed to create opportunity",
         variant: "destructive",
       });
     } finally {
@@ -268,11 +220,11 @@ export function OrganizationTicketDetails({
   };
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditedFields(prev => ({ ...prev, title: e.target.value }));
+    setFields(prev => ({ ...prev, title: e.target.value }));
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditedFields(prev => ({ ...prev, description: e.target.value }));
+    setFields(prev => ({ ...prev, description: e.target.value }));
   };
 
   const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -283,7 +235,7 @@ export function OrganizationTicketDetails({
       .map(tag => tag.trim())
       .filter(Boolean);
     
-    setEditedFields(prev => ({
+    setFields(prev => ({
       ...prev,
       tags: newTags
     }));
@@ -292,7 +244,7 @@ export function OrganizationTicketDetails({
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const minutes = parseDuration(value);
-    setEditedFields(prev => ({ 
+    setFields(prev => ({ 
       ...prev, 
       duration: value,
       durationMinutes: minutes !== null ? minutes : prev.durationMinutes 
@@ -300,64 +252,32 @@ export function OrganizationTicketDetails({
   };
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditedFields(prev => ({ ...prev, location: e.target.value }));
+    setFields(prev => ({ ...prev, location: e.target.value }));
   };
 
   const handleMaxVolunteersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 1;
-    setEditedFields(prev => ({ ...prev, max_volunteers: Math.max(1, value) }));
+    setFields(prev => ({ ...prev, max_volunteers: Math.max(1, value) }));
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!editedFields.event_date) return;
+    if (!fields.event_date) return;
 
     const [hours, minutes] = e.target.value.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes)) return;
 
-    const newDate = set(editedFields.event_date, { hours, minutes });
-    setEditedFields(prev => ({ ...prev, event_date: newDate }));
+    const newDate = new Date(fields.event_date);
+    newDate.setHours(hours, minutes);
+    setFields(prev => ({ ...prev, event_date: newDate }));
   };
 
-  if (loading) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Loading Opportunity</DialogTitle>
-            <DialogDescription>Please wait while we load the opportunity details.</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  if (error || !ticket) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Error</DialogTitle>
-            <DialogDescription>We encountered a problem loading the opportunity.</DialogDescription>
-          </DialogHeader>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-            <p className="font-medium">Error loading opportunity</p>
-            <p className="text-sm">{error || 'Opportunity not found'}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Edit Opportunity</DialogTitle>
+          <DialogTitle>Create New Opportunity</DialogTitle>
           <DialogDescription>
-            Make changes to your volunteer opportunity below. Fields marked with * are required.
+            Fill in the details for your new volunteer opportunity. Fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
 
@@ -369,7 +289,7 @@ export function OrganizationTicketDetails({
               </label>
               <Input
                 id="title"
-                value={editedFields.title}
+                value={fields.title}
                 onChange={handleTitleChange}
                 placeholder="Opportunity title"
                 required
@@ -382,7 +302,7 @@ export function OrganizationTicketDetails({
               </label>
               <Textarea
                 id="description"
-                value={editedFields.description}
+                value={fields.description}
                 onChange={handleDescriptionChange}
                 placeholder="Describe the volunteer opportunity..."
                 className="min-h-[100px]"
@@ -404,21 +324,21 @@ export function OrganizationTicketDetails({
                         type="date"
                         id="event_date"
                         className="w-full"
-                        value={editedFields.event_date 
-                          ? format(editedFields.event_date, "yyyy-MM-dd")
+                        value={fields.event_date 
+                          ? format(fields.event_date, "yyyy-MM-dd")
                           : ""}
                         onChange={(e) => {
                           const date = e.target.value ? new Date(e.target.value) : null;
                           if (date) {
-                            const hours = editedFields.event_date 
-                              ? editedFields.event_date.getHours() 
+                            const hours = fields.event_date 
+                              ? fields.event_date.getHours() 
                               : new Date().getHours();
-                            const minutes = editedFields.event_date 
-                              ? editedFields.event_date.getMinutes() 
+                            const minutes = fields.event_date 
+                              ? fields.event_date.getMinutes() 
                               : new Date().getMinutes();
                             date.setHours(hours, minutes);
                           }
-                          setEditedFields(prev => ({ ...prev, event_date: date }));
+                          setFields(prev => ({ ...prev, event_date: date }));
                         }}
                         min={format(new Date(), "yyyy-MM-dd")}
                         required
@@ -428,11 +348,11 @@ export function OrganizationTicketDetails({
                       <Input
                         type="time"
                         className="w-[120px]"
-                        value={editedFields.event_date 
-                          ? format(editedFields.event_date, "HH:mm")
+                        value={fields.event_date 
+                          ? format(fields.event_date, "HH:mm")
                           : ""}
                         onChange={handleTimeChange}
-                        disabled={!editedFields.event_date}
+                        disabled={!fields.event_date}
                         required
                       />
                     </div>
@@ -445,7 +365,7 @@ export function OrganizationTicketDetails({
                   </label>
                   <Input
                     id="duration"
-                    value={editedFields.duration}
+                    value={fields.duration}
                     onChange={handleDurationChange}
                     placeholder="e.g. 2 hours 30 minutes"
                     required
@@ -453,10 +373,10 @@ export function OrganizationTicketDetails({
                   <p className="text-sm text-gray-500">
                     Format: "X hours Y minutes" or "Y minutes"
                   </p>
-                  {editedFields.durationMinutes > 0 && (
+                  {fields.durationMinutes > 0 && (
                     <p className="text-sm text-gray-500">
-                      Event ends at: {editedFields.event_date && format(
-                        new Date(editedFields.event_date.getTime() + editedFields.durationMinutes * 60000),
+                      Event ends at: {fields.event_date && format(
+                        new Date(fields.event_date.getTime() + fields.durationMinutes * 60000),
                         "h:mm a"
                       )}
                     </p>
@@ -470,7 +390,7 @@ export function OrganizationTicketDetails({
                 </label>
                 <Input
                   id="location"
-                  value={editedFields.location}
+                  value={fields.location}
                   onChange={handleLocationChange}
                   placeholder="Physical address or virtual meeting link"
                   required
@@ -483,7 +403,7 @@ export function OrganizationTicketDetails({
                   id="max_volunteers"
                   type="number"
                   min="1"
-                  value={editedFields.max_volunteers}
+                  value={fields.max_volunteers}
                   onChange={handleMaxVolunteersChange}
                   placeholder="Number of volunteers needed"
                 />
@@ -494,9 +414,9 @@ export function OrganizationTicketDetails({
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="status">Status</label>
                 <Select
-                  value={editedFields.status}
+                  value={fields.status}
                   onValueChange={(value: DatabaseTicketStatus) => 
-                    setEditedFields(prev => ({ ...prev, status: value }))
+                    setFields(prev => ({ ...prev, status: value }))
                   }
                 >
                   <SelectTrigger id="status">
@@ -519,9 +439,9 @@ export function OrganizationTicketDetails({
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="priority">Priority</label>
                 <Select
-                  value={editedFields.priority}
+                  value={fields.priority}
                   onValueChange={(value: TicketPriority) => 
-                    setEditedFields(prev => ({ ...prev, priority: value }))
+                    setFields(prev => ({ ...prev, priority: value }))
                   }
                 >
                   <SelectTrigger id="priority">
@@ -553,9 +473,9 @@ export function OrganizationTicketDetails({
               <p className="text-sm text-gray-500">
                 Separate tags with commas. Example: education, mentoring, remote
               </p>
-              {editedFields.tags.length > 0 && (
+              {fields.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {editedFields.tags.map((tag, index) => (
+                  {fields.tags.map((tag, index) => (
                     <Badge 
                       key={index} 
                       variant="secondary"
@@ -581,7 +501,7 @@ export function OrganizationTicketDetails({
                   disabled={saving}
                 >
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
+                  Create Opportunity
                 </Button>
               </div>
             </div>

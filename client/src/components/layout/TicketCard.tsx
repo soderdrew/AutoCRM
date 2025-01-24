@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { TicketDetails } from "./TicketDetails";
+import { Users } from "lucide-react";
+import { cn } from "../../lib/utils";
 
 interface TicketCardProps {
   ticket: {
@@ -11,6 +13,8 @@ interface TicketCardProps {
     status: 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     createdAt: string;
+    currentVolunteers?: number;
+    maxVolunteers?: number;
   };
 }
 
@@ -31,6 +35,9 @@ const priorityColors = {
 
 export function TicketCard({ ticket }: TicketCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const isFull = ticket.currentVolunteers !== undefined && 
+                 ticket.maxVolunteers !== undefined && 
+                 ticket.currentVolunteers >= ticket.maxVolunteers;
 
   return (
     <>
@@ -47,6 +54,15 @@ export function TicketCard({ ticket }: TicketCardProps) {
               <Badge variant="secondary" className={priorityColors[ticket.priority]}>
                 {ticket.priority}
               </Badge>
+              {(ticket.currentVolunteers !== undefined && ticket.maxVolunteers !== undefined) && (
+                <div className={cn(
+                  "flex items-center gap-1 text-sm",
+                  isFull ? "text-green-600" : "text-gray-600"
+                )}>
+                  <Users className="h-4 w-4" />
+                  <span>{ticket.currentVolunteers}/{ticket.maxVolunteers}</span>
+                </div>
+              )}
             </div>
             <div className="text-xs text-gray-400">#{ticket.id.slice(-8)}</div>
           </div>

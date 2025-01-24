@@ -7,6 +7,8 @@ import { supabase } from "../../supabaseClient";
 import type { Database } from "../../types/supabase";
 import { OrganizationTicketCard } from "./OrganizationTicketCard";
 import { OrganizationTicketDetails } from "./OrganizationTicketDetails";
+import { CreateOpportunityDialog } from "./CreateOpportunityDialog";
+import { ScrollArea } from "../ui/scroll-area";
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   organization: {
@@ -14,6 +16,8 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
     last_name: string;
     company: string | null;
   } | null;
+  current_volunteers: number;
+  max_volunteers: number;
 };
 
 export function OrganizationTicketList() {
@@ -23,6 +27,7 @@ export function OrganizationTicketList() {
   const [error, setError] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const fetchTickets = useCallback(async () => {
     if (!organizationId) return;
@@ -170,13 +175,11 @@ export function OrganizationTicketList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">My Opportunities</h2>
-        <Button asChild>
-          <Link to="/organization/opportunities/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Opportunity
-          </Link>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Your Opportunities</h2>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create New Opportunity
         </Button>
       </div>
 
@@ -187,59 +190,67 @@ export function OrganizationTicketList() {
         </TabsList>
         
         <TabsContent value="active" className="mt-4">
-          <div className="space-y-4">
-            {activeTickets.map((ticket) => (
-              <OrganizationTicketCard
-                key={ticket.id}
-                ticket={{
-                  id: ticket.id,
-                  title: ticket.title,
-                  customer: ticket.organization ? 
-                    ticket.organization.first_name : 
-                    'Unknown Organization',
-                  status: ticket.status,
-                  priority: ticket.priority,
-                  createdAt: new Date(ticket.created_at).toLocaleString()
-                }}
-                isOwner={ticket.customer_id === organizationId}
-                onClick={() => {}}  // No-op since we don't want to show details
-                onEditClick={() => setEditingTicketId(ticket.id)}
-              />
-            ))}
-            {activeTickets.length === 0 && (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <p className="text-gray-600">No active opportunities</p>
-              </div>
-            )}
-          </div>
+          <ScrollArea className="h-[60vh]">
+            <div className="space-y-4 pr-4">
+              {activeTickets.map((ticket) => (
+                <OrganizationTicketCard
+                  key={ticket.id}
+                  ticket={{
+                    id: ticket.id,
+                    title: ticket.title,
+                    customer: ticket.organization ? 
+                      ticket.organization.first_name : 
+                      'Unknown Organization',
+                    status: ticket.status,
+                    priority: ticket.priority,
+                    createdAt: new Date(ticket.created_at).toLocaleString(),
+                    currentVolunteers: ticket.current_volunteers,
+                    maxVolunteers: ticket.max_volunteers
+                  }}
+                  isOwner={ticket.customer_id === organizationId}
+                  onClick={() => {}}  // No-op since we don't want to show details
+                  onEditClick={() => setEditingTicketId(ticket.id)}
+                />
+              ))}
+              {activeTickets.length === 0 && (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <p className="text-gray-600">No active opportunities</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
-          <div className="space-y-4">
-            {completedTickets.map((ticket) => (
-              <OrganizationTicketCard
-                key={ticket.id}
-                ticket={{
-                  id: ticket.id,
-                  title: ticket.title,
-                  customer: ticket.organization ? 
-                    ticket.organization.first_name : 
-                    'Unknown Organization',
-                  status: ticket.status,
-                  priority: ticket.priority,
-                  createdAt: new Date(ticket.created_at).toLocaleString()
-                }}
-                isOwner={ticket.customer_id === organizationId}
-                onClick={() => {}}  // No-op since we don't want to show details
-                onEditClick={() => setEditingTicketId(ticket.id)}
-              />
-            ))}
-            {completedTickets.length === 0 && (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <p className="text-gray-600">No completed opportunities</p>
-              </div>
-            )}
-          </div>
+          <ScrollArea className="h-[60vh]">
+            <div className="space-y-4 pr-4">
+              {completedTickets.map((ticket) => (
+                <OrganizationTicketCard
+                  key={ticket.id}
+                  ticket={{
+                    id: ticket.id,
+                    title: ticket.title,
+                    customer: ticket.organization ? 
+                      ticket.organization.first_name : 
+                      'Unknown Organization',
+                    status: ticket.status,
+                    priority: ticket.priority,
+                    createdAt: new Date(ticket.created_at).toLocaleString(),
+                    currentVolunteers: ticket.current_volunteers,
+                    maxVolunteers: ticket.max_volunteers
+                  }}
+                  isOwner={ticket.customer_id === organizationId}
+                  onClick={() => {}}  // No-op since we don't want to show details
+                  onEditClick={() => setEditingTicketId(ticket.id)}
+                />
+              ))}
+              {completedTickets.length === 0 && (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <p className="text-gray-600">No completed opportunities</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </TabsContent>
       </Tabs>
 
@@ -249,6 +260,15 @@ export function OrganizationTicketList() {
         isOpen={!!editingTicketId}
         onOpenChange={(open) => !open && setEditingTicketId(null)}
         onTicketUpdate={fetchTickets}
+      />
+
+      <CreateOpportunityDialog
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onOpportunityCreated={() => {
+          // Refresh the list when a new opportunity is created
+          fetchTickets();
+        }}
       />
     </div>
   );

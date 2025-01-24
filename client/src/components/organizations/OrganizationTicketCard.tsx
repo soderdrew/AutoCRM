@@ -14,6 +14,8 @@ interface OrganizationTicketCardProps {
     status: TicketStatus;
     priority: TicketPriority;
     createdAt: string;
+    currentVolunteers?: number;
+    maxVolunteers?: number;
   };
   isOwner: boolean;
   onEditClick: () => void;
