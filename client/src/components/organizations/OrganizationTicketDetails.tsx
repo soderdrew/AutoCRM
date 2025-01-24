@@ -22,7 +22,7 @@ import { supabase } from "../../supabaseClient";
 import type { Database } from "../../types/supabase";
 import { format, set } from "date-fns";
 import { useToast } from "../../hooks/use-toast";
-import { Loader2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 
 type DatabaseTicketStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed' | 'assigned';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -260,6 +260,37 @@ export function OrganizationTicketDetails({
       toast({
         title: "Error saving changes",
         description: err instanceof Error ? err.message : "Failed to save changes",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!ticket) return;
+  
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('tickets')
+        .delete()
+        .eq('id', ticket.id);
+  
+      if (error) throw error;
+  
+      toast({
+        title: "Success",
+        description: "Opportunity deleted successfully",
+      });
+  
+      onOpenChange(false);
+      if (onTicketUpdate) onTicketUpdate();
+    } catch (error) {
+      console.error('Error deleting opportunity:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete opportunity",
         variant: "destructive",
       });
     } finally {
@@ -568,7 +599,7 @@ export function OrganizationTicketDetails({
               )}
             </div>
 
-            <div className="pt-6 border-t">
+            {/* <div className="pt-6 border-t">
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
@@ -584,6 +615,45 @@ export function OrganizationTicketDetails({
                   Save Changes
                 </Button>
               </div>
+            </div> */}
+            <div className="flex justify-between items-center mt-6 mb-2">
+                <div className="flex gap-4">
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancel
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving}>
+                    {saving ? "Saving..." : "Save Changes"}
+                    </Button>
+                </div>
+                {editedFields.current_volunteers === 0 && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button 
+                                variant="destructive" 
+                                disabled={saving}
+                            >
+                                {saving ? "Deleting..." : "Delete Opportunity"}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete this volunteer opportunity.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                    onClick={handleDelete}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
             </div>
           </div>
         </ScrollArea>
