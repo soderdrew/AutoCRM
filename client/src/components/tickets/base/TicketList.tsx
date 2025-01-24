@@ -78,55 +78,36 @@ export function TicketList() {
       console.log('Fetching tickets...');
       
       // First fetch tickets
-      const { data: ticketsData, error: ticketsError } = await supabase
+      const { data: tickets, error } = await supabase
         .from('tickets')
         .select(`
-          id,
-          title,
-          description,
-          status,
-          priority,
-          tags,
-          custom_fields,
-          customer_id,
-          team_id,
-          created_at,
-          updated_at,
-          resolved_at,
-          closed_at
+          *,
+          customer:customer_id (
+            user_id,
+            first_name,
+            last_name,
+            company
+          )
         `)
         .order('created_at', { ascending: false });
 
-      if (ticketsError) {
-        console.error('Supabase error:', ticketsError);
-        throw ticketsError;
+      if (error) throw error;
+
+      if (tickets) {
+        // Transform tickets to ensure all required fields are present
+        const transformedTickets = tickets.map(ticket => ({
+          ...ticket,
+          event_date: ticket.event_date || null,
+          duration: ticket.duration || null,
+          // Ensure other required fields have default values if needed
+          tags: ticket.tags || [],
+          custom_fields: ticket.custom_fields || {},
+          status: ticket.status || 'open',
+          priority: ticket.priority || 'medium'
+        })) as Ticket[];
+
+        setTickets(transformedTickets);
       }
-
-      // Then fetch user roles for all customers
-      const customerIds = ticketsData?.map(t => t.customer_id) || [];
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, first_name, last_name, company')
-        .in('user_id', customerIds);
-
-      if (userRolesError) {
-        console.error('Error fetching user roles:', userRolesError);
-        throw userRolesError;
-      }
-
-      // Create a map of user_id to user role data
-      const userRolesMap = new Map(
-        userRolesData?.map(role => [role.user_id, role]) || []
-      );
-
-      // Combine tickets with their customer data
-      const transformedTickets = (ticketsData || []).map(ticket => ({
-        ...ticket,
-        customer: userRolesMap.get(ticket.customer_id) || null
-      }));
-
-      console.log('Transformed tickets:', transformedTickets);
-      setTickets(transformedTickets);
     } catch (err) {
       console.error('Error fetching tickets:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tickets');
