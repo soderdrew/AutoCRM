@@ -12,8 +12,12 @@ import {
   Target,
   Users,
   MapPin,
-  Building2
+  Building2,
+  Star,
+  ThumbsUp,
+  MessageSquare
 } from "lucide-react";
+import { Badge } from "../ui/badge";
 
 interface ServiceStats {
   totalHours: number;
@@ -30,7 +34,20 @@ interface ServiceStats {
     date: Date;
     duration: number;
     location: string;
+    feedback?: {
+      rating: number;
+      feedback: string;
+      skills_demonstrated: string[];
+      areas_of_improvement: string;
+      would_work_again: boolean;
+    };
   }>;
+  feedbackMetrics: {
+    averageRating: number;
+    totalFeedback: number;
+    skillFrequency: { [key: string]: number };
+    wouldWorkAgainPercentage: number;
+  };
 }
 
 export function VolunteerMetrics() {
@@ -44,7 +61,13 @@ export function VolunteerMetrics() {
     averageHoursPerMonth: 0,
     currentStreak: 0,
     serviceTypes: {},
-    serviceHistory: []
+    serviceHistory: [],
+    feedbackMetrics: {
+      averageRating: 0,
+      totalFeedback: 0,
+      skillFrequency: {},
+      wouldWorkAgainPercentage: 0
+    }
   });
 
   useEffect(() => {
@@ -82,7 +105,13 @@ export function VolunteerMetrics() {
             averageHoursPerMonth: 0,
             currentStreak: 0,
             serviceTypes: {},
-            serviceHistory: []
+            serviceHistory: [],
+            feedbackMetrics: {
+              averageRating: 0,
+              totalFeedback: 0,
+              skillFrequency: {},
+              wouldWorkAgainPercentage: 0
+            }
           });
           return;
         }
@@ -202,17 +231,53 @@ export function VolunteerMetrics() {
           return types;
         }, {} as { [key: string]: number });
 
-        // Create service history from completed tickets
+        // Fetch feedback for completed tickets
+        const { data: feedback, error: feedbackError } = await supabase
+          .from('volunteer_feedback')
+          .select('*')
+          .in('ticket_id', completedTickets.map(t => t.id))
+          .eq('volunteer_id', user.id);
+
+        if (feedbackError) throw feedbackError;
+
+        // Create service history from completed tickets with feedback
         const serviceHistory = completedTickets
-          .map(ticket => ({
-            id: ticket.id,
-            title: ticket.title,
-            organization: orgNameMap.get(ticket.customer_id) || 'Unknown Organization',
-            date: new Date(ticket.event_date),
-            duration: (ticket.duration || 0) / 60,
-            location: ticket.location || 'No location specified'
-          }))
+          .map(ticket => {
+            const ticketFeedback = feedback?.find(f => f.ticket_id === ticket.id);
+            return {
+              id: ticket.id,
+              title: ticket.title,
+              organization: orgNameMap.get(ticket.customer_id) || 'Unknown Organization',
+              date: new Date(ticket.event_date),
+              duration: (ticket.duration || 0) / 60,
+              location: ticket.location || 'No location specified',
+              feedback: ticketFeedback ? {
+                rating: ticketFeedback.rating,
+                feedback: ticketFeedback.feedback,
+                skills_demonstrated: ticketFeedback.skills_demonstrated || [],
+                areas_of_improvement: ticketFeedback.areas_of_improvement,
+                would_work_again: ticketFeedback.would_work_again
+              } : undefined
+            };
+          })
           .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+        // Calculate feedback metrics
+        const feedbackMetrics = {
+          averageRating: feedback?.length 
+            ? feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length 
+            : 0,
+          totalFeedback: feedback?.length || 0,
+          skillFrequency: feedback?.reduce((freq: { [key: string]: number }, f) => {
+            (f.skills_demonstrated || []).forEach((skill: string) => {
+              freq[skill] = (freq[skill] || 0) + 1;
+            });
+            return freq;
+          }, {}),
+          wouldWorkAgainPercentage: feedback?.length
+            ? (feedback.filter(f => f.would_work_again).length / feedback.length) * 100
+            : 0
+        };
 
         setStats({
           totalHours: Number(totalHours.toFixed(1)),
@@ -222,7 +287,8 @@ export function VolunteerMetrics() {
           averageHoursPerMonth: Number(hoursThisMonth.toFixed(1)),
           currentStreak: weekStreak,
           serviceTypes,
-          serviceHistory
+          serviceHistory,
+          feedbackMetrics
         });
 
       } catch (err) {
@@ -414,7 +480,7 @@ export function VolunteerMetrics() {
             <CardHeader>
               <CardTitle>Service History</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Your completed volunteer opportunities
+                Your completed volunteer opportunities and feedback
               </p>
             </CardHeader>
             <CardContent>
@@ -455,6 +521,56 @@ export function VolunteerMetrics() {
                           </p>
                         </div>
                       </div>
+
+                      {/* Feedback Section */}
+                      {service.feedback ? (
+                        <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                              <span className="font-medium">{service.feedback.rating}/5</span>
+                            </div>
+                            {service.feedback.would_work_again && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <ThumbsUp className="h-3 w-3" />
+                                Would work together again
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {service.feedback.feedback && (
+                            <p className="text-sm text-gray-600 mt-2">
+                              "{service.feedback.feedback}"
+                            </p>
+                          )}
+
+                          {service.feedback.skills_demonstrated.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-sm font-medium mb-1">Skills Demonstrated:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {service.feedback.skills_demonstrated.map((skill) => (
+                                  <Badge key={skill} variant="outline">
+                                    {skill}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {service.feedback.areas_of_improvement && (
+                            <div className="mt-3">
+                              <p className="text-sm font-medium mb-1">Areas for Growth:</p>
+                              <p className="text-sm text-gray-600">
+                                {service.feedback.areas_of_improvement}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 mt-2 italic">
+                          Feedback pending from organization
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -472,17 +588,174 @@ export function VolunteerMetrics() {
         </TabsContent>
 
         <TabsContent value="impact" className="space-y-4">
-          {/* Impact Metrics Content */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Impact</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Coming soon: Visualization of your service impact
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+                <Star className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="animate-pulse h-7 w-16 bg-gray-200 rounded" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {stats.feedbackMetrics.averageRating.toFixed(1)}/5.0
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Based on {stats.feedbackMetrics.totalFeedback} reviews
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Would Work Again</CardTitle>
+                <ThumbsUp className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="animate-pulse h-7 w-16 bg-gray-200 rounded" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {Math.round(stats.feedbackMetrics.wouldWorkAgainPercentage)}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Organizations would work with you again
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Reviews</CardTitle>
+                <MessageSquare className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="animate-pulse h-7 w-16 bg-gray-200 rounded" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {stats.feedbackMetrics.totalFeedback}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Feedback received from organizations
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Top Skill</CardTitle>
+                <Target className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="animate-pulse h-7 w-16 bg-gray-200 rounded" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {Object.entries(stats.feedbackMetrics.skillFrequency || {})
+                        .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Most recognized skill by organizations
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Skills Recognition</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Skills frequently highlighted in your feedback
+                </p>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="animate-pulse h-4 bg-gray-200 rounded" />
+                    ))}
+                  </div>
+                ) : Object.keys(stats.feedbackMetrics.skillFrequency || {}).length > 0 ? (
+                  <div className="space-y-4">
+                    {Object.entries(stats.feedbackMetrics.skillFrequency)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([skill, count]) => (
+                        <div key={skill} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">{skill}</span>
+                            <span className="text-muted-foreground">{count} times</span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary rounded-full"
+                              style={{ 
+                                width: `${(count / stats.feedbackMetrics.totalFeedback) * 100}%` 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No skills data available yet</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Service Impact Distribution</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  How your service hours are distributed across organizations
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <div className="space-y-2">
+                    {Object.entries(
+                      stats.serviceHistory.reduce((acc: { [key: string]: number }, service) => {
+                        acc[service.organization] = (acc[service.organization] || 0) + service.duration;
+                        return acc;
+                      }, {} as { [key: string]: number })
+                    )
+                      .sort(([,a]: [string, number], [,b]: [string, number]) => b - a)
+                      .map(([org, hours]: [string, number]) => {
+                        const percentage = Number((hours / stats.totalHours) * 100);
+                        return (
+                          <div key={org} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">{org}</span>
+                              <span className="text-muted-foreground">{hours.toFixed(1)}h ({percentage.toFixed(1)}%)</span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

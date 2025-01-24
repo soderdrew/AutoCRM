@@ -93,7 +93,9 @@ export function TicketList() {
           created_at,
           updated_at,
           resolved_at,
-          closed_at
+          closed_at,
+          event_date,
+          duration
         `)
         .order('created_at', { ascending: false });
 
@@ -122,11 +124,13 @@ export function TicketList() {
       // Combine tickets with their customer data
       const transformedTickets = (ticketsData || []).map(ticket => ({
         ...ticket,
-        customer: userRolesMap.get(ticket.customer_id) || null
+        customer: userRolesMap.get(ticket.customer_id) || null,
+        event_date: ticket.event_date || null,
+        duration: ticket.duration || null
       }));
 
       console.log('Transformed tickets:', transformedTickets);
-      setTickets(transformedTickets);
+      setTickets(transformedTickets as Ticket[]);
     } catch (err) {
       console.error('Error fetching tickets:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tickets');

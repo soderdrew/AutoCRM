@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, MessageSquare } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import type { Database } from "../../types/supabase";
 import { OrganizationTicketCard } from "./OrganizationTicketCard";
 import { OrganizationTicketDetails } from "./OrganizationTicketDetails";
 import { CreateOpportunityDialog } from "./CreateOpportunityDialog";
+import { VolunteerFeedbackForm } from "./VolunteerFeedbackForm";
 import { ScrollArea } from "../ui/scroll-area";
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
@@ -27,6 +28,19 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   priority: 'low' | 'medium' | 'high' | 'urgent';
 };
 
+interface FeedbackState {
+  isOpen: boolean;
+  ticketId: string;
+  volunteers: Array<{ id: string; name: string; }>;
+}
+
+interface VolunteerFeedbackStatus {
+  [ticketId: string]: {
+    total: number;
+    completed: number;
+  };
+}
+
 export function OrganizationTicketList() {
   const [activeTickets, setActiveTickets] = useState<Ticket[]>([]);
   const [completedTickets, setCompletedTickets] = useState<Ticket[]>([]);
@@ -35,6 +49,9 @@ export function OrganizationTicketList() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [feedbackState, setFeedbackState] = useState<FeedbackState | null>(null);
+  const [volunteerAssignments, setVolunteerAssignments] = useState<Record<string, Array<{id: string, name: string}>>>({});
+  const [feedbackStatus, setFeedbackStatus] = useState<VolunteerFeedbackStatus>({});
 
   const fetchTickets = useCallback(async () => {
     if (!organizationId) return;
@@ -173,6 +190,104 @@ export function OrganizationTicketList() {
     };
   }, [organizationId, fetchTickets]);
 
+  // Add function to fetch volunteer assignments
+  const fetchVolunteerAssignments = useCallback(async (ticketIds: string[]) => {
+    if (!ticketIds.length) return;
+
+    try {
+      // First get the assignments
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('ticket_assignments')
+        .select('ticket_id, agent_id')
+        .in('ticket_id', ticketIds)
+        .eq('active', true);
+
+      if (assignmentsError) throw assignmentsError;
+      if (!assignments) return;
+
+      // Then get the user details for each agent
+      const agentIds = assignments.map(a => a.agent_id);
+      const { data: userRoles, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', agentIds);
+
+      if (userRolesError) throw userRolesError;
+      if (!userRoles) return;
+
+      // Create a map of user_id to user details for quick lookup
+      const userMap = new Map(userRoles.map(user => [user.user_id, user]));
+
+      // Build the assignments map
+      const assignmentMap: Record<string, Array<{id: string, name: string}>> = {};
+      assignments.forEach(assignment => {
+        const user = userMap.get(assignment.agent_id);
+        if (!user) return;
+
+        const volunteer = {
+          id: assignment.agent_id,
+          name: `${user.first_name} ${user.last_name}`.trim()
+        };
+        
+        if (!assignmentMap[assignment.ticket_id]) {
+          assignmentMap[assignment.ticket_id] = [];
+        }
+        assignmentMap[assignment.ticket_id].push(volunteer);
+      });
+
+      setVolunteerAssignments(assignmentMap);
+    } catch (err) {
+      console.error('Error fetching volunteer assignments:', err);
+    }
+  }, []);
+
+  // Add function to fetch feedback status
+  const fetchFeedbackStatus = useCallback(async (ticketIds: string[]) => {
+    if (!ticketIds.length) return;
+
+    try {
+      const { data: feedback, error: feedbackError } = await supabase
+        .from('volunteer_feedback')
+        .select('ticket_id, volunteer_id')
+        .in('ticket_id', ticketIds);
+
+      if (feedbackError) throw feedbackError;
+
+      // Create a map of ticket_id to feedback count
+      const statusMap: VolunteerFeedbackStatus = {};
+      ticketIds.forEach(ticketId => {
+        const totalVolunteers = volunteerAssignments[ticketId]?.length || 0;
+        const completedFeedback = feedback?.filter(f => f.ticket_id === ticketId).length || 0;
+        statusMap[ticketId] = {
+          total: totalVolunteers,
+          completed: completedFeedback
+        };
+      });
+
+      setFeedbackStatus(statusMap);
+    } catch (err) {
+      console.error('Error fetching feedback status:', err);
+    }
+  }, [volunteerAssignments]);
+
+  // Update useEffect to fetch feedback status
+  useEffect(() => {
+    const completedTicketIds = completedTickets.map(t => t.id);
+    if (completedTicketIds.length > 0) {
+      fetchVolunteerAssignments(completedTicketIds);
+      fetchFeedbackStatus(completedTicketIds);
+    }
+  }, [completedTickets, fetchVolunteerAssignments, fetchFeedbackStatus]);
+
+  const handleFeedbackClick = (ticketId: string) => {
+    const volunteers = volunteerAssignments[ticketId] || [];
+    setFeedbackState({
+      isOpen: true,
+      ticketId,
+      volunteers
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -246,28 +361,46 @@ export function OrganizationTicketList() {
           <ScrollArea className="h-[60vh]">
             <div className="space-y-4 pr-4">
               {completedTickets.map((ticket) => (
-                <OrganizationTicketCard
-                  key={ticket.id}
-                  ticket={{
-                    id: ticket.id,
-                    title: ticket.title,
-                    customer: ticket.organization ? 
-                      ticket.organization.first_name : 
-                      'Unknown Organization',
-                    status: ticket.status,
-                    priority: ticket.priority,
-                    createdAt: new Date(ticket.created_at).toLocaleString(),
-                    currentVolunteers: ticket.current_volunteers,
-                    maxVolunteers: ticket.max_volunteers,
-                    location: ticket.location || undefined,
-                    eventDate: ticket.event_date ? new Date(ticket.event_date).toLocaleDateString() : undefined,
-                    eventTime: ticket.event_date ? new Date(ticket.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
-                    duration: ticket.duration || undefined
-                  }}
-                  isOwner={ticket.customer_id === organizationId}
-                  onClick={() => {}}
-                  onEditClick={() => setEditingTicketId(ticket.id)}
-                />
+                <div key={ticket.id} className="relative group">
+                  <OrganizationTicketCard
+                    ticket={{
+                      id: ticket.id,
+                      title: ticket.title,
+                      customer: ticket.organization ? 
+                        ticket.organization.first_name : 
+                        'Unknown Organization',
+                      status: ticket.status,
+                      priority: ticket.priority,
+                      createdAt: new Date(ticket.created_at).toLocaleString(),
+                      currentVolunteers: ticket.current_volunteers,
+                      maxVolunteers: ticket.max_volunteers,
+                      location: ticket.location || undefined,
+                      eventDate: ticket.event_date ? new Date(ticket.event_date).toLocaleDateString() : undefined,
+                      eventTime: ticket.event_date ? new Date(ticket.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
+                      duration: ticket.duration || undefined
+                    }}
+                    isOwner={ticket.customer_id === organizationId}
+                    onClick={() => {}}
+                    onEditClick={() => setEditingTicketId(ticket.id)}
+                  />
+                  {volunteerAssignments[ticket.id]?.length > 0 && (
+                    feedbackStatus[ticket.id]?.completed === feedbackStatus[ticket.id]?.total ? (
+                      <div className="absolute top-4 right-16 px-3 py-1 text-sm text-green-600 bg-green-50 rounded-md">
+                        All feedback submitted
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleFeedbackClick(ticket.id)}
+                        className="absolute top-4 right-16 gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Provide Feedback ({feedbackStatus[ticket.id]?.completed || 0}/{feedbackStatus[ticket.id]?.total || 0})
+                      </Button>
+                    )
+                  )}
+                </div>
               ))}
               {completedTickets.length === 0 && (
                 <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -295,6 +428,20 @@ export function OrganizationTicketList() {
           fetchTickets();
         }}
       />
+
+      {feedbackState && (
+        <VolunteerFeedbackForm
+          isOpen={feedbackState.isOpen}
+          onClose={() => setFeedbackState(null)}
+          ticketId={feedbackState.ticketId}
+          organizationId={organizationId || ''}
+          volunteers={feedbackState.volunteers}
+          onFeedbackSubmitted={() => {
+            const completedTicketIds = completedTickets.map(t => t.id);
+            fetchFeedbackStatus(completedTicketIds);
+          }}
+        />
+      )}
     </div>
   );
 } 

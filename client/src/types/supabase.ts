@@ -16,6 +16,8 @@ export type Database = {
           updated_at: string
           resolved_at: string | null
           closed_at: string | null
+          event_date: string | null
+          duration: number | null
         }
         Insert: {
           id?: string
@@ -31,6 +33,8 @@ export type Database = {
           updated_at?: string
           resolved_at?: string | null
           closed_at?: string | null
+          event_date?: string | null
+          duration?: number | null
         }
         Update: {
           id?: string
@@ -46,6 +50,8 @@ export type Database = {
           updated_at?: string
           resolved_at?: string | null
           closed_at?: string | null
+          event_date?: string | null
+          duration?: number | null
         }
       }
       user_roles: {
@@ -177,6 +183,47 @@ export type Database = {
           user_id?: string
           content?: string
           is_internal?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      volunteer_feedback: {
+        Row: {
+          id: string
+          ticket_id: string
+          volunteer_id: string
+          organization_id: string
+          rating: number
+          feedback: string
+          skills_demonstrated: string[]
+          areas_of_improvement: string | null
+          would_work_again: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          volunteer_id: string
+          organization_id: string
+          rating: number
+          feedback: string
+          skills_demonstrated?: string[]
+          areas_of_improvement?: string | null
+          would_work_again: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          volunteer_id?: string
+          organization_id?: string
+          rating?: number
+          feedback?: string
+          skills_demonstrated?: string[]
+          areas_of_improvement?: string | null
+          would_work_again?: boolean
           created_at?: string
           updated_at?: string
         }
