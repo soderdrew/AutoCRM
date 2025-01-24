@@ -14,6 +14,7 @@ import { VolunteerTicketList } from "./components/tickets/volunteer/VolunteerTic
 import { Toaster } from "./components/ui/toaster";
 import { VolunteerMetrics } from "./components/volunteer/VolunteerMetrics";
 import { OrganizationTicketList } from "./components/organizations/OrganizationTicketList";
+import VerifyEmail from './pages/VerifyEmail';
 
 // Layout wrapper component
 interface DashboardLayoutProps {
@@ -87,6 +88,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthComponent />} />
+          <Route path="/auth/verify-email" element={<VerifyEmail />} />
           
           {/* Protected volunteer routes */}
           <Route

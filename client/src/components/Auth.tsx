@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Session } from '@supabase/supabase-js'
-import { supabase } from '../supabaseClient'
+import { createBrowserClient } from '@supabase/ssr'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Label } from "../components/ui/label"
 import { Input } from "../components/ui/input"
+
+// Create the Supabase client
+const supabase = createBrowserClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
 
 interface UserFormData {
   firstName?: string;
@@ -101,56 +107,90 @@ export default function AuthComponent() {
       setIsSubmitting(true)
       setError(null)
 
-      // Create the user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      console.log('Signup attempt:', { 
+        selectedRole,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        orgName: formData.orgName
+      })
+
+      // Create the user account with SSR client, only storing metadata
+      const { data: { user }, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            intended_role: selectedRole === 'volunteer' ? 'employee' : 'customer',
+            first_name: selectedRole === 'volunteer' ? formData.firstName : formData.orgName,
+            last_name: selectedRole === 'volunteer' ? formData.lastName : null,
+            is_active: true,
+            user_type: selectedRole
+          }
+        }
       })
 
       if (authError) throw authError
 
-      if (authData.user) {
-        // Insert user role and additional info
-          const { error: insertError } = await supabase
-            .from('user_roles')
-            .insert({
-            user_id: authData.user.id,
-              role: selectedRole === 'volunteer' ? 'employee' : 'customer',
-              first_name: formData.firstName || (selectedRole === 'organization' ? formData.orgName : null),
-              last_name: formData.lastName || null,
-              is_active: true
-            })
+      console.log('User created with metadata:', user?.user_metadata)
 
-          if (insertError) throw insertError
-      }
-
-      // Show success message
-      setError('Please check your email to confirm your account')
-        } catch (err) {
+      // Redirect to verify email page
+      navigate('/auth/verify-email', { 
+        state: { 
+          email: formData.email,
+          userType: selectedRole
+        } 
+      })
+    } catch (err) {
       console.error('Error during sign up:', err)
       setError(err instanceof Error ? err.message : 'An error occurred during sign up')
     } finally {
       setIsSubmitting(false)
-        }
-      }
+    }
+  }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session?.user) {
-        checkUserRole(session.user.id)
-      } else {
-        setLoading(false)
+    // Handle auth callback after email confirmation
+    const handleAuthCallback = async () => {
+      const searchParams = new URLSearchParams(window.location.search)
+      if (searchParams.get('error_description')) {
+        setError(searchParams.get('error_description') || 'Authentication error')
+        return
       }
-    })
 
-    // Listen for auth changes
+      // Get session after email confirmation
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      if (session?.user) {
+        // After email confirmation, check/create role
+        await checkUserRole(session.user.id)
+      }
+    }
+
+    // Check if we're on the callback URL
+    if (window.location.pathname === '/auth/callback') {
+      handleAuthCallback()
+    } else {
+      // Only check session if not on callback URL
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session)
+        if (session?.user && session.user.email_confirmed_at) {
+          checkUserRole(session.user.id)
+        } else {
+          setLoading(false)
+        }
+      })
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
-      if (session?.user) {
+      if (session?.user && session.user.email_confirmed_at) {
         checkUserRole(session.user.id)
       } else {
         setUserRole(null)
@@ -164,20 +204,72 @@ export default function AuthComponent() {
   const checkUserRole = async (userId: string) => {
     try {
       setError(null)
-      const { data, error } = await supabase
+      
+      // Get user with SSR client
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('No user found')
+
+      console.log('Checking user role:', {
+        userId,
+        email_confirmed: user.email_confirmed_at,
+        metadata: user.user_metadata
+      })
+
+      // Only proceed if email is confirmed
+      if (!user.email_confirmed_at) {
+        console.log('Email not confirmed yet')
+        setLoading(false)
+        return
+      }
+
+      // Get role from user_roles table
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
         .single()
 
-      if (error) throw error
+      console.log('Existing role check:', { roleData, roleError })
 
-      if (!data?.role) {
-        throw new Error('No role assigned')
+      let userRole: string | null = null
+
+      if (roleError) {
+        // Get intended role from metadata, default to employee if not specified
+        const intendedRole = user.user_metadata?.intended_role || 'employee'
+        console.log('Creating new role:', {
+          intendedRole,
+          first_name: user.user_metadata?.first_name,
+          last_name: user.user_metadata?.last_name
+        })
+        
+        // Create role record
+        const { data: insertData, error: insertError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: intendedRole,
+            first_name: user.user_metadata?.first_name || null,
+            last_name: user.user_metadata?.last_name || null,
+            is_active: true
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          console.error('Error inserting role:', insertError)
+          throw insertError
+        }
+        
+        console.log('Role created:', insertData)
+        userRole = intendedRole
+      } else {
+        userRole = roleData.role
       }
 
-      setUserRole(data.role)
-      
+      console.log('Final user role:', userRole)
+      setUserRole(userRole)
+
       // Redirect based on role
       const roleRoutes = {
         admin: '/admin/dashboard',
@@ -185,11 +277,11 @@ export default function AuthComponent() {
         customer: '/organization/dashboard'
       }
 
-      const route = roleRoutes[data.role as keyof typeof roleRoutes]
+      const route = roleRoutes[userRole as keyof typeof roleRoutes]
       if (route) {
         navigate(route)
       } else {
-        throw new Error(`Invalid role: ${data.role}`)
+        throw new Error(`Invalid role: ${userRole}`)
       }
     } catch (error) {
       console.error('Error fetching user role:', error)

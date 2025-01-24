@@ -245,11 +245,11 @@ export function VolunteerMetrics() {
           .map(ticket => {
             const ticketFeedback = feedback?.find(f => f.ticket_id === ticket.id);
             return {
-              id: ticket.id,
-              title: ticket.title,
-              organization: orgNameMap.get(ticket.customer_id) || 'Unknown Organization',
-              date: new Date(ticket.event_date),
-              duration: (ticket.duration || 0) / 60,
+            id: ticket.id,
+            title: ticket.title,
+            organization: orgNameMap.get(ticket.customer_id) || 'Unknown Organization',
+            date: new Date(ticket.event_date),
+            duration: (ticket.duration || 0) / 60,
               location: ticket.location || 'No location specified',
               feedback: ticketFeedback ? {
                 rating: ticketFeedback.rating,
@@ -676,14 +676,14 @@ export function VolunteerMetrics() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
                 <CardTitle>Skills Recognition</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Skills frequently highlighted in your feedback
                 </p>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 {loading ? (
                   <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
@@ -720,7 +720,7 @@ export function VolunteerMetrics() {
             <Card>
               <CardHeader>
                 <CardTitle>Service Impact Distribution</CardTitle>
-                <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                   How your service hours are distributed across organizations
                 </p>
               </CardHeader>
@@ -753,8 +753,8 @@ export function VolunteerMetrics() {
                       })}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
           </div>
         </TabsContent>
       </Tabs>

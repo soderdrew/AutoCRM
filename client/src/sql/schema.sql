@@ -134,7 +134,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- User Roles policies
+-- Drop existing policies
+DROP POLICY IF EXISTS "Allow user role creation during signup" ON user_roles;
+DROP POLICY IF EXISTS "Enable insert for authentication service" ON user_roles;
+
+-- Create a single, strict insert policy
+CREATE POLICY "Allow role creation only with complete data"
+ON user_roles FOR INSERT
+WITH CHECK (
+  -- Must have a valid user_id
+  auth.uid() IS NOT NULL
+  -- Must have role specified
+  AND role IS NOT NULL
+  -- For employees (volunteers), must have first and last name
+  AND (
+    (role = 'employee' AND first_name IS NOT NULL AND last_name IS NOT NULL)
+    OR
+    -- For customers (organizations), must have first_name (org name)
+    (role = 'customer' AND first_name IS NOT NULL)
+    OR
+    -- Allow admin role with complete data
+    (role = 'admin' AND first_name IS NOT NULL)
+  )
+);
+
+-- Keep existing select policies
 CREATE POLICY "Users can view their own role"
   ON user_roles FOR SELECT
   USING (auth.uid() = user_id);
