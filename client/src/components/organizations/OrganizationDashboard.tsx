@@ -1,7 +1,4 @@
-import { TicketList } from "../layout/TicketList";
-import { Button } from "../ui/button";
-import { PlusCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { OrganizationTicketList } from "./OrganizationTicketList";
 
 export function OrganizationDashboard() {
   return (
@@ -31,18 +28,7 @@ export function OrganizationDashboard() {
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold">Recent Opportunities</h2>
-          <Button asChild>
-            <Link to="/organization/opportunities/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create New Opportunity
-            </Link>
-          </Button>
-        </div>
-        <TicketList />
-      </div>
+      <OrganizationTicketList />
     </div>
   );
 } 
