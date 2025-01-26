@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../../ui/popover";
+import { ScrollArea } from "../../ui/scroll-area";
 
 type ViewMode = 'list' | 'grid';
 type SortOption = 'posted-date-asc' | 'posted-date-desc' | 'event-date-asc' | 'event-date-desc' | 'priority' | 'people-needed-asc' | 'people-needed-desc';
@@ -392,6 +393,7 @@ export function VolunteerTicketList() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80">
+              <ScrollArea className="h-[370px] pr-4">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Priority</label>
@@ -402,12 +404,14 @@ export function VolunteerTicketList() {
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by priority" />
                     </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent className="max-h-[200px]">
+                        <ScrollArea className="h-full">
                       <SelectItem value="all">All Priorities</SelectItem>
                       <SelectItem value="urgent">Urgent</SelectItem>
                       <SelectItem value="high">High</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="low">Low</SelectItem>
+                        </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
@@ -421,13 +425,15 @@ export function VolunteerTicketList() {
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by duration" />
                     </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent className="max-h-[200px]">
+                        <ScrollArea className="h-full">
                       <SelectItem value="all">Any Duration</SelectItem>
                       <SelectItem value="30min">30 Minutes or Less</SelectItem>
                       <SelectItem value="1hour">31-60 Minutes</SelectItem>
                       <SelectItem value="2hours">1-2 Hours</SelectItem>
                       <SelectItem value="3hours">2-3 Hours</SelectItem>
                       <SelectItem value="4plus">More than 3 Hours</SelectItem>
+                        </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
@@ -441,10 +447,12 @@ export function VolunteerTicketList() {
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by date" />
                     </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent className="max-h-[200px]">
+                        <ScrollArea className="h-full">
                       <SelectItem value="all">All Dates</SelectItem>
                       <SelectItem value="upcoming">Upcoming</SelectItem>
                       <SelectItem value="past">Past</SelectItem>
+                        </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
@@ -458,11 +466,13 @@ export function VolunteerTicketList() {
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent className="max-h-[200px]">
+                        <ScrollArea className="h-full">
                       <SelectItem value="all">All Opportunities</SelectItem>
                       <SelectItem value="available">Available</SelectItem>
                       <SelectItem value="full">Full</SelectItem>
                       <SelectItem value="my-opportunities">My Opportunities</SelectItem>
+                        </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
@@ -476,12 +486,14 @@ export function VolunteerTicketList() {
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by time of day" />
                     </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent className="max-h-[200px]">
+                        <ScrollArea className="h-full">
                       <SelectItem value="all">Any Time</SelectItem>
                       <SelectItem value="morning">Morning (5AM-12PM)</SelectItem>
                       <SelectItem value="afternoon">Afternoon (12PM-5PM)</SelectItem>
                       <SelectItem value="evening">Evening (5PM-Late)</SelectItem>
                       <SelectItem value="weekend">Weekend</SelectItem>
+                        </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
@@ -495,18 +507,21 @@ export function VolunteerTicketList() {
                     <SelectTrigger>
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent className="max-h-[200px]">
+                        <ScrollArea className="h-full">
                       <SelectItem value="posted-date-desc">Posted Date (Newest First)</SelectItem>
                       <SelectItem value="posted-date-asc">Posted Date (Oldest First)</SelectItem>
                       <SelectItem value="event-date-asc">Event Date (Soonest First)</SelectItem>
                       <SelectItem value="event-date-desc">Event Date (Latest First)</SelectItem>
-                      <SelectItem value="people-needed-desc">Most People Needed</SelectItem>
-                      <SelectItem value="people-needed-asc">Least People Needed</SelectItem>
-                      <SelectItem value="priority">Priority</SelectItem>
+                          <SelectItem value="priority">Priority (High to Low)</SelectItem>
+                          <SelectItem value="people-needed-desc">People Needed (Most First)</SelectItem>
+                          <SelectItem value="people-needed-asc">People Needed (Least First)</SelectItem>
+                        </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              </ScrollArea>
             </PopoverContent>
           </Popover>
         </div>

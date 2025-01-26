@@ -420,7 +420,7 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl h-[80vh]">
         {loading ? (
           <>
             <DialogHeader>
@@ -439,8 +439,8 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
             </DialogHeader>
           </>
         ) : ticket ? (
-          <>
-            <DialogHeader className="pb-4">
+          <ScrollArea className="h-full pr-4">
+            <div className="space-y-6 relative">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="secondary" className={statusColors[ticket.status]}>
                   {ticket.status.replace("_", " ")}
@@ -455,205 +455,204 @@ export function TicketDetails({ ticketId, isOpen, onOpenChange }: TicketDetailsP
               <DialogDescription className="text-sm text-gray-500">
                 Created {format(new Date(ticket.created_at), 'PPpp')}
               </DialogDescription>
-            </DialogHeader>
 
-            <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-              <div className="space-y-6">
-                {/* Organization */}
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Organization</h3>
-                  <p className="text-sm">
-                    {ticket.customer
-                      ? `${ticket.customer.first_name} ${ticket.customer.last_name}${
-                          ticket.customer.company ? ` · ${ticket.customer.company}` : ''
-                        }`
-                      : 'Unknown Organization'}
-                  </p>
-                </div>
+              {/* Organization */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Organization</h3>
+                <p className="text-sm">
+                  {ticket.customer
+                    ? `${ticket.customer.first_name} ${ticket.customer.last_name}${
+                        ticket.customer.company ? ` · ${ticket.customer.company}` : ''
+                      }`
+                    : 'Unknown Organization'}
+                </p>
+              </div>
 
-                {/* Event Details */}
-                <div className="grid grid-cols-2 gap-4">
-                  {ticket.location && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
-                      <p className="text-sm">{ticket.location}</p>
-                    </div>
-                  )}
-                  {ticket.event_date && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Date & Time</h3>
-                      <p className="text-sm">
-                        {format(new Date(ticket.event_date), 'PPp')}
-                      </p>
-                    </div>
-                  )}
-                  {ticket.duration && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Duration</h3>
-                      <p className="text-sm">{formatDuration(ticket.duration)}</p>
-                    </div>
-                  )}
+              {/* Event Details */}
+              <div className="grid grid-cols-2 gap-4">
+                {ticket.location && (
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Volunteer Capacity</h3>
-                    <p className="text-sm">
-                      {ticket.current_volunteers}/{ticket.max_volunteers} volunteers
-                      {ticket.current_volunteers >= ticket.max_volunteers && " (Full)"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
-                  <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
-                </div>
-
-                {/* Tags */}
-                {ticket.tags && ticket.tags.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {ticket.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
+                    <p className="text-sm">{ticket.location}</p>
                   </div>
                 )}
-
-                {/* Timestamps */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                {ticket.event_date && (
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Created</h3>
-                    <p>{format(new Date(ticket.created_at), 'PPpp')}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Date & Time</h3>
+                    <p className="text-sm">
+                      {format(new Date(ticket.event_date), 'PPp')}
+                    </p>
                   </div>
+                )}
+                {ticket.duration && (
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated</h3>
-                    <p>{format(new Date(ticket.updated_at), 'PPpp')}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Duration</h3>
+                    <p className="text-sm">{formatDuration(ticket.duration)}</p>
                   </div>
-                  {ticket.resolved_at && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Resolved</h3>
-                      <p>{format(new Date(ticket.resolved_at), 'PPpp')}</p>
-                    </div>
-                  )}
-                  {ticket.closed_at && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-1">Closed</h3>
-                      <p>{format(new Date(ticket.closed_at), 'PPpp')}</p>
-                    </div>
-                  )}
+                )}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Volunteer Capacity</h3>
+                  <p className="text-sm">
+                    {ticket.current_volunteers}/{ticket.max_volunteers} volunteers
+                    {ticket.current_volunteers >= ticket.max_volunteers && " (Full)"}
+                  </p>
                 </div>
+              </div>
 
-                {/* Comments Section */}
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold mb-4">Comments</h3>
-                  <div className="space-y-4">
-                    {comments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No comments yet.</p>
-                    ) : (
-                      comments.map((comment) => (
-                        <div 
-                          key={comment.id} 
-                          className={`p-4 rounded-lg ${
-                            comment.is_internal 
-                              ? 'bg-yellow-50 border border-yellow-200' 
-                              : 'bg-gray-50 border border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
-                                {comment.user 
-                                  ? `${comment.user.first_name} ${comment.user.last_name}`
-                                  : 'Unknown User'}
-                              </span>
-                              {comment.is_internal && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Internal Note
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(comment.created_at), 'PPpp')}
-                              </span>
-                              {comment.user_id === currentUserId && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                  onClick={() => setCommentToDelete(comment)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
+              {/* Description */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+                <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
+              </div>
+
+              {/* Tags */}
+              {ticket.tags && ticket.tags.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {ticket.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Created</h3>
+                  <p>{format(new Date(ticket.created_at), 'PPpp')}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated</h3>
+                  <p>{format(new Date(ticket.updated_at), 'PPpp')}</p>
+                </div>
+                {ticket.resolved_at && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Resolved</h3>
+                    <p>{format(new Date(ticket.resolved_at), 'PPpp')}</p>
+                  </div>
+                )}
+                {ticket.closed_at && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Closed</h3>
+                    <p>{format(new Date(ticket.closed_at), 'PPpp')}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Comments Section */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Comments</h3>
+                <div className="space-y-4">
+                  {comments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No comments yet.</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div 
+                        key={comment.id} 
+                        className={`p-4 rounded-lg ${
+                          comment.is_internal 
+                            ? 'bg-yellow-50 border border-yellow-200' 
+                            : 'bg-gray-50 border border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {comment.user 
+                                ? `${comment.user.first_name} ${comment.user.last_name}`
+                                : 'Unknown User'}
+                            </span>
+                            {comment.is_internal && (
+                              <Badge variant="secondary" className="text-xs">
+                                Internal Note
+                              </Badge>
+                            )}
                           </div>
-                          <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(comment.created_at), 'PPpp')}
+                            </span>
+                            {comment.user_id === currentUserId && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                onClick={() => setCommentToDelete(comment)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      ))
-                    )}
-
-                    {/* Delete Comment Confirmation Dialog */}
-                    <AlertDialog 
-                      open={!!commentToDelete} 
-                      onOpenChange={(open) => !open && setCommentToDelete(null)}
-                    >
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Comment</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this comment? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <Button
-                            variant="destructive"
-                            onClick={handleDeleteComment}
-                          >
-                            Delete
-                          </Button>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                    {/* Add Comment Form */}
-                    <div className="border-t pt-4 mt-6">
-                      <div className="space-y-4">
-                        <Textarea
-                          placeholder="Add a comment..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                        <div className="flex items-center justify-between">
-                          {(userRole === 'admin' || userRole === 'employee') && (
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                id="internal-comment"
-                                checked={isInternalComment}
-                                onCheckedChange={setIsInternalComment}
-                              />
-                              <Label htmlFor="internal-comment">Internal Comment</Label>
-                            </div>
-                          )}
-                          <Button 
-                            onClick={handleCommentSubmit}
-                            disabled={!newComment.trim() || submittingComment}
-                          >
-                            {submittingComment ? "Adding..." : "Add Comment"}
-                          </Button>
-                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
                       </div>
-                    </div>
+                    ))
+                  )}
+
+                  {/* Delete Comment Confirmation Dialog */}
+                  <AlertDialog 
+                    open={!!commentToDelete} 
+                    onOpenChange={(open) => !open && setCommentToDelete(null)}
+                  >
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this comment? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <Button
+                          variant="destructive"
+                          onClick={handleDeleteComment}
+                        >
+                          Delete
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+
+              {/* Comment Form */}
+              <div className="border-t pt-4 mt-6">
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    className="min-h-[100px]"
+                  />
+                  <div className="flex items-center justify-between">
+                    {(userRole === 'admin' || userRole === 'employee') && (
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="internal-comment"
+                          checked={isInternalComment}
+                          onCheckedChange={setIsInternalComment}
+                        />
+                        <Label htmlFor="internal-comment">Internal Comment</Label>
+                      </div>
+                    )}
+                    <Button 
+                      onClick={handleCommentSubmit}
+                      disabled={!newComment.trim() || submittingComment}
+                    >
+                      {submittingComment ? "Adding..." : "Add Comment"}
+                    </Button>
                   </div>
                 </div>
               </div>
-            </ScrollArea>
-          </>
+
+              {/* Add some bottom padding */}
+              <div className="h-4"></div>
+            </div>
+          </ScrollArea>
         ) : null}
       </DialogContent>
     </Dialog>
