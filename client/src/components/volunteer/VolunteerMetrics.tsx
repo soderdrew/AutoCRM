@@ -206,16 +206,34 @@ export function VolunteerMetrics() {
         // Calculate current streak (consecutive weeks with completed service)
         let weekStreak = 0;
         const weekInMillis = 7 * 24 * 60 * 60 * 1000; // One week in milliseconds
-        const sortedDates = completedTickets
-          .map(t => new Date(t.event_date))
+        
+        // Group tickets by week
+        const weekMap = new Map<string, Date[]>();
+        completedTickets.forEach(ticket => {
+          const date = new Date(ticket.event_date);
+          const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
+          const weekKey = weekStart.toISOString();
+          if (!weekMap.has(weekKey)) {
+            weekMap.set(weekKey, []);
+          }
+          weekMap.get(weekKey)?.push(date);
+        });
+
+        // Sort weeks in descending order
+        const sortedWeeks = Array.from(weekMap.keys())
+          .map(key => new Date(key))
           .sort((a, b) => b.getTime() - a.getTime());
 
-        if (sortedDates.length > 0) {
-          let currentDate = new Date(sortedDates[0]);
-          for (const date of sortedDates) {
-            if (currentDate.getTime() - date.getTime() <= weekInMillis) { // Within a week
+        // Calculate consecutive weeks
+        if (sortedWeeks.length > 0) {
+          weekStreak = 1; // Start with 1 for the most recent week
+          for (let i = 1; i < sortedWeeks.length; i++) {
+            const currentWeek = sortedWeeks[i - 1];
+            const prevWeek = sortedWeeks[i];
+            
+            // Check if weeks are consecutive
+            if (currentWeek.getTime() - prevWeek.getTime() <= weekInMillis + (24 * 60 * 60 * 1000)) { // Add one day tolerance
               weekStreak++;
-              currentDate = date;
             } else {
               break;
             }
