@@ -20,21 +20,33 @@ interface VolunteerTicketChatProps {
 export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       content: inputMessage,
       role: 'user',
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputMessage('');
+    setIsTyping(true);
 
-    // TODO: Add AI response handling here
+    // Simulate AI response after a short delay
+    setTimeout(() => {
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'll help you find volunteer opportunities! Based on your message, let me search through available options that match your interests. Would you like me to focus on any specific areas or time preferences?",
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+      setIsTyping(false);
+    }, 1500);
   };
 
   return (
@@ -54,7 +66,7 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
               <div
                 key={message.id}
                 className={`flex ${
-                  message.role === 'assistant' ? 'justify-end' : 'justify-start'
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
                 <div
@@ -71,6 +83,17 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
                 </div>
               </div>
             ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-muted rounded-lg p-3 mr-4">
+                  <div className="flex gap-2">
+                    <span className="w-2 h-2 rounded-full bg-foreground/25 animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-2 h-2 rounded-full bg-foreground/25 animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-2 h-2 rounded-full bg-foreground/25 animate-bounce"></span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
