@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
 } from "../../ui/popover";
 import { ScrollArea } from "../../ui/scroll-area";
+import { VolunteerTicketChat } from "./VolunteerTicketChat";
 
 type ViewMode = 'list' | 'grid';
 type SortOption = 'posted-date-asc' | 'posted-date-desc' | 'event-date-asc' | 'event-date-desc' | 'priority' | 'people-needed-asc' | 'people-needed-desc';
@@ -74,6 +75,7 @@ export function VolunteerTicketList() {
   const [dateFilter, setDateFilter] = useState<string>('all'); // all, upcoming, past
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('all');
   const [timeOfDayFilter, setTimeOfDayFilter] = useState<TimeOfDayFilter>('all');
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -332,6 +334,10 @@ export function VolunteerTicketList() {
     return 'evening';
   };
 
+  const handleAIAssistantClick = () => {
+    setIsChatOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -351,9 +357,22 @@ export function VolunteerTicketList() {
 
   return (
     <div className="space-y-4">
+      <VolunteerTicketChat 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Available Opportunities</h2>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="default"
+            className="gap-2"
+            onClick={handleAIAssistantClick}
+          >
+            <Search className="h-4 w-4" />
+            AI Assistant
+          </Button>
           <Button
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="icon"

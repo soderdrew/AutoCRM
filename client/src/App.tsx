@@ -11,6 +11,7 @@ import { volunteerMenuItems } from "./components/volunteer/volunteerConfig";
 import { OrganizationDashboard } from "./components/organizations/OrganizationDashboard";
 import { organizationMenuItems } from "./components/organizations/organizationConfig";
 import { VolunteerTicketList } from "./components/tickets/volunteer/VolunteerTicketList";
+import Profile from "./components/volunteer/Profile";
 import { Toaster } from "./components/ui/toaster";
 import { VolunteerMetrics } from "./components/volunteer/VolunteerMetrics";
 import { OrganizationTicketList } from "./components/organizations/OrganizationTicketList";
@@ -56,13 +57,6 @@ const ServiceHours = () => (
   <div className="space-y-6">
     <h1 className="text-3xl font-bold tracking-tight">My Service Hours</h1>
     <p className="text-lg text-gray-600">Track and verify your volunteer hours.</p>
-  </div>
-);
-
-const Profile = () => (
-  <div className="space-y-6">
-    <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-    <p className="text-lg text-gray-600">Manage your volunteer profile and preferences.</p>
   </div>
 );
 
