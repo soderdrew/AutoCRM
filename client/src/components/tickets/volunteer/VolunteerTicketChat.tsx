@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../../ui/sheet";
 import { Send } from "lucide-react";
+import { getAIResponse, formatChatHistory } from "../../../services/ai-agent";
+import { BaseMessage } from "@langchain/core/messages";
+import useAuth from "../../../hooks/use-auth";
 
 interface Message {
   id: string;
@@ -17,13 +20,160 @@ interface VolunteerTicketChatProps {
   onClose: () => void;
 }
 
+// Helper function to format text with markdown-style syntax
+const formatTextContent = (text: string) => {
+  // Handle bold text
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+  
+  // Handle italics
+  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+
+  return text;
+};
+
+// Helper function to format message content
+const formatMessageContent = (content: string) => {
+  // Split content into sections by "==="
+  const sections = content.split('===').filter(Boolean);
+  
+  if (sections.length <= 1) {
+    // If no sections, just split by newlines and handle bullet points
+    return content.split('\n').map((line, i) => {
+      const trimmed = line.trim();
+      
+      // Handle section-like headers with ###
+      if (trimmed.startsWith('###')) {
+        return (
+          <div key={i} className="font-bold text-sm text-foreground mt-3 mb-1">
+            {trimmed.replace(/^###\s*/, '')}
+          </div>
+        );
+      }
+      
+      // Handle bullet points
+      if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+        return (
+          <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
+               dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed.substring(1).trim()) }} />
+        );
+      }
+      
+      // Handle numbered lists
+      if (/^\d+\.\s/.test(trimmed)) {
+        return (
+          <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
+               dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed) }} />
+        );
+      }
+
+      // Handle "Key: Value" format
+      if (trimmed.includes(':**')) {
+        const [key, ...valueParts] = trimmed.split(':**');
+        const value = valueParts.join(':**'); // Rejoin in case there are more ':**' in the value
+        return (
+          <div key={i} className="ml-2 text-sm py-0.5 text-foreground">
+            <span className="font-semibold">{key}:</span>
+            <span dangerouslySetInnerHTML={{ __html: formatTextContent(value) }} />
+          </div>
+        );
+      }
+
+      // Handle empty lines
+      if (!trimmed) {
+        return <div key={i} className="h-2" />;
+      }
+
+      // Handle regular text
+      return (
+        <div key={i} className="text-sm py-0.5 text-foreground" 
+             dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed) }} />
+      );
+    });
+  }
+
+  return sections.map((section, index) => {
+    const [title, ...content] = section.trim().split('\n');
+    return (
+      <div key={index} className="mb-4">
+        {title && (
+          <div className="font-bold text-foreground mb-2 text-base">
+            {title.trim()}
+          </div>
+        )}
+        <div className="space-y-0.5">
+          {content.map((line, i) => {
+            const trimmed = line.trim();
+            
+            if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+              return (
+                <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
+                     dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed.substring(1).trim()) }} />
+              );
+            }
+            
+            if (/^\d+\.\s/.test(trimmed)) {
+              return (
+                <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
+                     dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed) }} />
+              );
+            }
+
+            if (!trimmed) {
+              return <div key={i} className="h-2" />;
+            }
+
+            return (
+              <div key={i} className="text-sm py-0.5 text-foreground" 
+                   dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed) }} />
+            );
+          })}
+        </div>
+      </div>
+    );
+  });
+};
+
 export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const { user } = useAuth();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
+  // Function to scroll to bottom
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollArea = scrollAreaRef.current;
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
+  };
+
+  // Scroll when messages change or when AI starts/stops typing
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  // Add welcome message when chat is opened for the first time
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        content: "Hi! I'm your AI Volunteer Assistant. I can help you find opportunities that match your interests and availability. Feel free to ask me about:\n\n" +
+                "• Specific types of volunteer work (e.g., 'teaching', 'environmental')\n" +
+                "• Time preferences (e.g., 'weekends', 'evenings')\n" +
+                "• Location preferences (e.g., 'remote', 'nearby')\n\n" +
+                "What kind of opportunities are you looking for?",
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [isOpen, messages.length]);
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !user) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -36,22 +186,38 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response after a short delay
-    setTimeout(() => {
+    try {
+      // Format chat history for the AI
+      const chatHistory = formatChatHistory(messages) as BaseMessage[];
+      
+      // Get AI response with user context
+      const aiResponse = await getAIResponse(inputMessage, chatHistory, user.id);
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'll help you find volunteer opportunities! Based on your message, let me search through available options that match your interests. Would you like me to focus on any specific areas or time preferences?",
+        content: aiResponse.content,
         role: 'assistant',
         timestamp: new Date(),
       };
+
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I apologize, but I encountered an error. Please try again.",
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[400px] sm:w-[540px] h-full flex flex-col p-0">
+      <SheetContent side="right" className="w-[600px] sm:w-[800px] lg:w-[1000px] h-full flex flex-col p-0 max-w-[90vw]">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle>AI Volunteer Assistant</SheetTitle>
           <SheetDescription>
@@ -60,7 +226,7 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
         </SheetHeader>
 
         {/* Chat Messages */}
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             {messages.map((message) => (
               <div
@@ -70,14 +236,16 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
                 }`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[85%] rounded-lg p-3 ${
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground ml-4'
+                      ? 'bg-blue-100 text-foreground ml-4'
                       : 'bg-muted mr-4'
                   }`}
                 >
-                  <p>{message.content}</p>
-                  <span className="text-xs opacity-70">
+                  <div className="space-y-2">
+                    {formatMessageContent(message.content)}
+                  </div>
+                  <span className="text-xs opacity-70 mt-2 block">
                     {message.timestamp.toLocaleTimeString()}
                   </span>
                 </div>
