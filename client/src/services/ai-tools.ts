@@ -46,7 +46,7 @@ function formatEventTime(isoDate: string, durationMinutes: number) {
 }
 
 export const volunteerTools = {
-  async getAvailableOpportunities(filters: OpportunityFilters = {}) {
+  async getAvailableOpportunities(filters: OpportunityFilters = {}, userId?: string) {
     try {
       const now = new Date().toISOString();
       const futureDate = filters.daysAhead 
@@ -54,6 +54,21 @@ export const volunteerTools = {
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Default to 30 days
 
       console.log('Fetching opportunities between:', { now, futureDate });
+
+      // First, get user's current assignments if userId is provided
+      let userAssignments: any[] = [];
+      if (userId) {
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('ticket_assignments')
+          .select('ticket_id')
+          .eq('agent_id', userId)
+          .eq('active', true);
+
+        if (!assignmentsError && assignments) {
+          userAssignments = assignments;
+        }
+        console.log('User current assignments:', userAssignments);
+      }
 
       let query = supabase
         .from('tickets')
@@ -71,34 +86,27 @@ export const volunteerTools = {
         .lte('event_date', futureDate)
         .eq('status', 'open');
 
-    //   // Apply optional filters
-    //   if (filters.location) {
-    //     query = query.ilike('location', `%${filters.location}%`);
-    //   }
-    //   if (filters.minDuration) {
-    //     query = query.gte('duration', filters.minDuration);
-    //   }
-    //   if (filters.maxDuration) {
-    //     query = query.lte('duration', filters.maxDuration);
-    //   }
-
       const { data: opportunities, error } = await query;
 
       console.log('Raw opportunities from database:', opportunities);
 
       if (error) throw error;
 
-      // Filter opportunities with available slots in memory
+      // Filter opportunities with available slots and not already signed up for
       const availableOpportunities = opportunities?.filter(opp => {
         const hasSpace = (opp.current_volunteers || 0) < (opp.max_volunteers || 0);
+        const alreadySignedUp = userAssignments.some(assignment => assignment.ticket_id === opp.id);
+        
         console.log('Opportunity check:', {
           id: opp.id,
           title: opp.title,
           current: opp.current_volunteers,
           max: opp.max_volunteers,
-          hasSpace
+          hasSpace,
+          alreadySignedUp
         });
-        return hasSpace;
+        
+        return hasSpace && !alreadySignedUp;
       }) || [];
 
       // Add formatted time information to each opportunity
@@ -131,6 +139,8 @@ export const volunteerTools = {
     try {
       const now = new Date().toISOString();
       
+      console.log('Fetching assignments for user:', userId);
+      
       const { data: assignments, error } = await supabase
         .from('ticket_assignments')
         .select(`
@@ -144,6 +154,8 @@ export const volunteerTools = {
             location,
             priority,
             status,
+            current_volunteers,
+            max_volunteers,
             teams (
               id,
               name,
@@ -158,8 +170,20 @@ export const volunteerTools = {
 
       if (error) throw error;
 
+      console.log('Raw assignments data:', assignments);
+
+      // Add formatted time information to assignments
+      const assignmentsWithFormattedTime = assignments
+        .filter(assignment => assignment.tickets) // Filter out any assignments with missing ticket data
+        .map(assignment => ({
+          ...assignment,
+          formattedTime: formatEventTime(assignment.tickets.event_date, assignment.tickets.duration)
+        }));
+
+      console.log('Formatted assignments:', assignmentsWithFormattedTime);
+
       // Sort by date and priority
-      return assignments.sort((a, b) => {
+      return assignmentsWithFormattedTime.sort((a, b) => {
         // First sort by priority (higher priority first)
         const priorityDiff = (b.tickets?.priority || 0) - (a.tickets?.priority || 0);
         if (priorityDiff !== 0) return priorityDiff;

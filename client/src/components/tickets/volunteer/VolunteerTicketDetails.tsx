@@ -305,27 +305,35 @@ export function VolunteerTicketDetails({ ticketId, isOpen, onOpenChange, onAssig
           return;
         }
 
-        // Add assignment
-        const { error: insertError } = await supabase
+        // First check for any existing assignments (active or inactive)
+        const { data: existingAssignment } = await supabase
           .from('ticket_assignments')
-          .insert([
-            {
-              ticket_id: ticket.id,
-              agent_id: currentUserId,
-              active: true
-            },
-          ]);
+          .select('*')
+          .eq('ticket_id', ticket.id)
+          .eq('agent_id', currentUserId)
+          .single();
 
-        if (insertError) {
-          if (insertError.code === '23505') {
-            toast({
-              title: "Already signed up",
-              description: "You are already signed up for this opportunity.",
-              variant: "destructive",
-            });
-            return;
-          }
-          throw insertError;
+        if (existingAssignment) {
+          // Update existing assignment to active
+          const { error: updateError } = await supabase
+            .from('ticket_assignments')
+            .update({ active: true })
+            .eq('id', existingAssignment.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Create new assignment
+          const { error: insertError } = await supabase
+            .from('ticket_assignments')
+            .insert([
+              {
+                ticket_id: ticket.id,
+                agent_id: currentUserId,
+                active: true
+              },
+            ]);
+
+          if (insertError) throw insertError;
         }
 
         // Increment current_volunteers count
