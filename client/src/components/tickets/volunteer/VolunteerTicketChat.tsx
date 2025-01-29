@@ -55,31 +55,13 @@ const formatMessageContent = (content: string) => {
       // Handle bullet points
       if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
         return (
-          <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
-               dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed.substring(1).trim()) }} />
-        );
-      }
-      
-      // Handle numbered lists
-      if (/^\d+\.\s/.test(trimmed)) {
-        return (
-          <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
-               dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed) }} />
-        );
-      }
-
-      // Handle "Key: Value" format
-      if (trimmed.includes(':**')) {
-        const [key, ...valueParts] = trimmed.split(':**');
-        const value = valueParts.join(':**'); // Rejoin in case there are more ':**' in the value
-        return (
-          <div key={i} className="ml-2 text-sm py-0.5 text-foreground">
-            <span className="font-semibold">{key}:</span>
-            <span dangerouslySetInnerHTML={{ __html: formatTextContent(value) }} />
+          <div key={i} className="ml-4 text-sm py-0.5 text-foreground flex items-start">
+            <span className="mr-2">•</span>
+            <span dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed.substring(1).trim()) }} />
           </div>
         );
       }
-
+      
       // Handle empty lines
       if (!trimmed) {
         return <div key={i} className="h-2" />;
@@ -108,15 +90,10 @@ const formatMessageContent = (content: string) => {
             
             if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
               return (
-                <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
-                     dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed.substring(1).trim()) }} />
-              );
-            }
-            
-            if (/^\d+\.\s/.test(trimmed)) {
-              return (
-                <div key={i} className="ml-4 text-sm py-0.5 text-foreground" 
-                     dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed) }} />
+                <div key={i} className="ml-4 text-sm py-0.5 text-foreground flex items-start">
+                  <span className="mr-2">•</span>
+                  <span dangerouslySetInnerHTML={{ __html: formatTextContent(trimmed.substring(1).trim()) }} />
+                </div>
               );
             }
 
@@ -160,11 +137,15 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         id: 'welcome',
-        content: "Hi! I'm your AI Volunteer Assistant. I can help you find opportunities that match your interests and availability. Feel free to ask me about:\n\n" +
-                "• Specific types of volunteer work (e.g., 'teaching', 'environmental')\n" +
-                "• Time preferences (e.g., 'weekends', 'evenings')\n" +
-                "• Location preferences (e.g., 'remote', 'nearby')\n\n" +
-                "What kind of opportunities are you looking for?",
+        content: "Hi! I'm your AI Volunteer Assistant. I can help you:\n\n" +
+                "- Show your current volunteer assignments\n" +
+                "- Find available opportunities you can sign up for\n" +
+                "- Sign you up for new opportunities\n\n" +
+                "Try asking:\n\n" +
+                "- 'What events am I doing?'\n" +
+                "- 'What opportunities are available?'\n" +
+                "- 'Sign me up for [opportunity name]'\n\n" +
+                "How can I help you today?",
         role: 'assistant',
         timestamp: new Date(),
       };
