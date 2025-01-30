@@ -32,6 +32,10 @@ When responding:
    - Check current assignments using getUserAssignments
    - Check available opportunities using getAvailableOpportunities
    - Present both pieces of information to give a complete picture
+5. When a user wants to leave an opportunity:
+   - Confirm which opportunity they want to leave
+   - Use leaveOpportunity to process their request
+   - Inform them of the result
 
 Data Presentation Guidelines:
 1. Use "### Your Current Assignments" and "### Available Opportunities" as section headers
@@ -137,6 +141,17 @@ When showing assignments, also check getAvailableOpportunities to show what user
           return JSON.stringify(result);
         },
       }),
+      new DynamicStructuredTool({
+        name: "leaveOpportunity",
+        description: "Removes the user from a volunteer opportunity they are currently signed up for",
+        schema: z.object({
+          ticketId: z.string(),
+        }),
+        func: async ({ ticketId }) => {
+          const result = await volunteerTools.leaveOpportunity(userId, ticketId);
+          return JSON.stringify(result);
+        },
+      })
     ];
 
     // Create the agent

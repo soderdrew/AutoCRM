@@ -204,7 +204,7 @@ export const volunteerTools = {
 
       // Clean up the query - remove common words and normalize
       const cleanQuery = query.toLowerCase()
-        .replace(/opportunity|event|cleanup|clean up/g, '')
+        .replace(/opportunity|event/g, '')
         .trim();
       
       console.log('Cleaned query:', cleanQuery);
@@ -526,6 +526,83 @@ export const volunteerTools = {
       return formattedTickets;
     } catch (error) {
       console.error('Error in findOpportunities:', error);
+      throw error;
+    }
+  },
+
+  async leaveOpportunity(userId: string, ticketId: string) {
+    try {
+      console.log('Starting leave opportunity process:', { userId, ticketId });
+
+      // If ticketId doesn't look like a UUID, try to find it from user's assignments
+      if (!ticketId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        console.log('Input is not a UUID, searching in user assignments...');
+        
+        // Get user's current assignments with ticket details
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('ticket_assignments')
+          .select(`
+            *,
+            tickets (
+              id,
+              title,
+              status
+            )
+          `)
+          .eq('agent_id', userId)
+          .eq('active', true);
+
+        if (assignmentsError) {
+          console.error('Error fetching assignments:', assignmentsError);
+          throw assignmentsError;
+        }
+
+        // Find the assignment with a matching ticket title
+        const matchingAssignment = assignments?.find(assignment => 
+          assignment.tickets?.title.toLowerCase().includes(ticketId.toLowerCase())
+        );
+
+        if (!matchingAssignment?.tickets?.id) {
+          console.log('No matching assignment found');
+          throw new Error('Could not find an active assignment matching that opportunity. Please check that you are signed up for this opportunity.');
+        }
+
+        console.log('Found matching assignment:', {
+          ticketId: matchingAssignment.tickets.id,
+          title: matchingAssignment.tickets.title
+        });
+        
+        ticketId = matchingAssignment.tickets.id;
+      }
+
+      // Start a Supabase transaction
+      const { data: result, error: txError } = await supabase.rpc('leave_opportunity', {
+        p_user_id: userId,
+        p_ticket_id: ticketId
+      });
+
+      if (txError) {
+        console.error('Error in leave opportunity transaction:', txError);
+        throw txError;
+      }
+
+      console.log('Transaction result:', result);
+
+      if (result.success === false) {
+        return {
+          success: false,
+          message: result.message
+        };
+      }
+
+      return {
+        success: true,
+        message: `You have successfully left the ${result.ticket_title} opportunity.`,
+        ticket: result.ticket
+      };
+
+    } catch (error) {
+      console.error("Error leaving opportunity:", error);
       throw error;
     }
   }
