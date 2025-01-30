@@ -289,128 +289,30 @@ export const volunteerTools = {
         ticketId = actualTicketId;
       }
 
-      // Get ticket details
-      const { data: ticket, error: ticketError } = await supabase
-        .from('tickets')
-        .select('*, teams(name)')
-        .eq('id', ticketId)
-        .single();
-
-      if (ticketError) {
-        console.error('Error fetching ticket:', ticketError);
-        throw ticketError;
-      }
-
-      console.log('Ticket details:', ticket);
-
-      // Check ticket status
-      console.log('Checking ticket status:', ticket.status);
-      if (ticket.status === 'in_progress') {
-        console.log('Signup rejected: Opportunity in progress');
-        return {
-          success: false,
-          message: "This opportunity is already in progress. Please look for other available opportunities."
-        };
-      }
-
-      if (ticket.status === 'closed' || ticket.status === 'resolved') {
-        console.log('Signup rejected: Opportunity no longer available');
-        return {
-          success: false,
-          message: "This opportunity is no longer available."
-        };
-      }
-
-      // Check if opportunity is full
-      console.log('Checking volunteer capacity:', {
-        current: ticket.current_volunteers,
-        max: ticket.max_volunteers
+      // Start a Supabase transaction
+      const { data: result, error: txError } = await supabase.rpc('sign_up_opportunity', {
+        p_user_id: userId,
+        p_ticket_id: ticketId
       });
-      if (ticket.current_volunteers >= ticket.max_volunteers) {
-        console.log('Signup rejected: Opportunity is full');
+
+      if (txError) {
+        console.error('Error in signup transaction:', txError);
+        throw txError;
+      }
+
+      console.log('Transaction result:', result);
+
+      if (result.success === false) {
         return {
           success: false,
-          message: "This opportunity has reached its maximum number of volunteers."
+          message: result.message
         };
       }
 
-      // Check for existing assignment
-      console.log('Checking for existing assignment...');
-      const { data: existingAssignment, error: assignmentError } = await supabase
-        .from('ticket_assignments')
-        .select('*')
-        .eq('agent_id', userId)
-        .eq('ticket_id', ticket.id)
-        .single();
-
-      if (assignmentError && assignmentError.code !== 'PGRST116') {
-        console.error('Error checking existing assignment:', assignmentError);
-        throw assignmentError;
-      }
-
-      console.log('Existing assignment check result:', existingAssignment);
-
-      if (existingAssignment?.active) {
-        console.log('Signup rejected: Already signed up');
-        return {
-          success: false,
-          message: "You are already signed up for this opportunity."
-        };
-      }
-
-      // If there's an inactive assignment, reactivate it
-      if (existingAssignment) {
-        console.log('Reactivating existing assignment...');
-        const { error: updateError } = await supabase
-          .from('ticket_assignments')
-          .update({ active: true })
-          .eq('id', existingAssignment.id);
-
-        if (updateError) {
-          console.error('Error reactivating assignment:', updateError);
-          throw updateError;
-        }
-      } else {
-        // Create new assignment
-        console.log('Creating new assignment...');
-        const { error: createError } = await supabase
-          .from('ticket_assignments')
-          .insert([
-            {
-              ticket_id: ticket.id,
-              agent_id: userId,
-              active: true
-            }
-          ]);
-
-        if (createError) {
-          console.error('Error creating assignment:', createError);
-          throw createError;
-        }
-      }
-
-      // Update volunteer count directly
-      console.log('Updating volunteer count...');
-      const { error: updateCountError } = await supabase
-        .from('tickets')
-        .update({ 
-          current_volunteers: ticket.current_volunteers + 1
-        })
-        .eq('id', ticket.id);
-
-      if (updateCountError) {
-        console.error('Error updating volunteer count:', updateCountError);
-        throw updateCountError;
-      }
-
-      console.log('Signup successful!');
       return {
         success: true,
-        message: `Successfully signed up for ${ticket.title} with ${ticket.teams?.name}!`,
-        ticket: {
-          ...ticket,
-          current_volunteers: ticket.current_volunteers + 1
-        }
+        message: result.message,
+        ticket: result.ticket
       };
 
     } catch (error) {
