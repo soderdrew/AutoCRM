@@ -137,14 +137,23 @@ export function VolunteerTicketChat({ isOpen, onClose }: VolunteerTicketChatProp
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         id: 'welcome',
-        content: "Hi! I'm your AI Volunteer Assistant. I can help you:\n\n" +
-                "- Show your current volunteer assignments\n" +
-                "- Find available opportunities you can sign up for\n" +
-                "- Sign you up for new opportunities\n\n" +
-                "Try asking:\n\n" +
-                "- 'What events am I doing?'\n" +
-                "- 'What opportunities are available?'\n" +
-                "- 'Sign me up for [opportunity name]'\n\n" +
+        content: "Hi! I'm your AI Volunteer Assistant. I can help you with the following:\n\n" +
+                "### View Your Assignments\n" +
+                "• Check your current volunteer commitments\n" +
+                "• See upcoming events you're signed up for\n" +
+                "Try: 'What events am I signed up for?'\n\n" +
+                "### Find Opportunities\n" +
+                "• Browse available volunteer opportunities\n" +
+                "• Filter by date, location, or duration\n" +
+                "Try: 'Show me available opportunities' or 'What can I volunteer for?'\n\n" +
+                "### Sign Up for Events\n" +
+                "• Join new volunteer opportunities\n" +
+                "• Quick and easy registration\n" +
+                "Try: 'Sign me up for [event name]'\n\n" +
+                "### Manage Commitments\n" +
+                "• Leave events if your plans change\n" +
+                "• Update your volunteer schedule\n" +
+                "Try: 'I need to leave [event name]'\n\n" +
                 "How can I help you today?",
         role: 'assistant',
         timestamp: new Date(),
